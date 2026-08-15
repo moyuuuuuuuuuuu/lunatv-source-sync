@@ -3,8 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#10231d" />
-    <title>LunaTV 来源管理</title>
+    <meta name="theme-color" content="#1677ff" />
+    <title>LunaTV 视频源管理</title>
+    <script>
+      (() => {
+        const saved = localStorage.getItem('lunatv-theme');
+        const theme = saved === 'light' || saved === 'dark' ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
