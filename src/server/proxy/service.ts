@@ -5,7 +5,55 @@ import { Readable } from 'node:stream';
 import { isUnsafeAddress } from './safety.js';
 
 export type ResolveHost = (hostname: string) => Promise<readonly { address: string; family: number }[]>;
-const defaultResolve: ResolveHost = (hostname) => lookup(hostname, { all: true, verbatim: true });
+type LookupHost = typeof lookup;
+type DohFetch = typeof fetch;
+
+interface DohResponse {
+  Status?: number;
+  Answer?: Array<{ type?: number; data?: string }>;
+}
+
+async function resolveWithDoh(hostname: string, fetchImpl: DohFetch): Promise<readonly { address: string; family: number }[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const answers = await Promise.all([1, 28].map(async (type) => {
+      const url = new URL('https://cloudflare-dns.com/dns-query');
+      url.searchParams.set('name', hostname);
+      url.searchParams.set('type', String(type));
+      const response = await fetchImpl(url, {
+        headers: { accept: 'application/dns-json' },
+        signal: controller.signal,
+      });
+      if (!response.ok) return [];
+      const body = await response.json() as DohResponse;
+      if (body.Status !== 0) return [];
+      return (body.Answer ?? [])
+        .filter((answer) => answer.type === type && typeof answer.data === 'string')
+        .map((answer) => ({ address: answer.data!, family: type === 1 ? 4 : 6 }));
+    }));
+    return answers.flat();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function resolvePublicHost(
+  hostname: string,
+  lookupImpl: LookupHost = lookup,
+  dohFetch: DohFetch = fetch,
+): Promise<readonly { address: string; family: number }[]> {
+  const local = await lookupImpl(hostname, { all: true, verbatim: true });
+  if (local.length && local.every(({ address }) => !isUnsafeAddress(address))) return local;
+  try {
+    const publicAnswers = await resolveWithDoh(hostname, dohFetch);
+    return publicAnswers.length ? publicAnswers : local;
+  } catch {
+    return local;
+  }
+}
+
+const defaultResolve: ResolveHost = (hostname) => resolvePublicHost(hostname);
 const SAFE_REQUEST_HEADERS = new Set(['accept', 'accept-language', 'user-agent']);
 const SAFE_RESPONSE_HEADERS = new Set(['content-type', 'content-language', 'cache-control', 'etag', 'last-modified']);
 
@@ -33,7 +81,13 @@ function pinnedFetch(url: URL, init: RequestInit, target: { address: string; fam
     const transport = url.protocol === 'https:' ? https : http;
     const request = transport.request(url, {
       method: init.method ?? 'GET', headers: init.headers as http.OutgoingHttpHeaders,
-      lookup: (_hostname, _options, callback) => callback(null, target.address, target.family),
+      lookup: ((_hostname: string, lookupOptions: object, callback: (...args: unknown[]) => void) => {
+        if ('all' in lookupOptions && lookupOptions.all) {
+          callback(null, [{ address: target.address, family: target.family }]);
+        } else {
+          callback(null, target.address, target.family);
+        }
+      }) as typeof import('node:dns').lookup,
       signal: init.signal ?? undefined,
       ...(url.protocol === 'https:' ? { servername: url.hostname } : {}),
     }, (incoming) => {

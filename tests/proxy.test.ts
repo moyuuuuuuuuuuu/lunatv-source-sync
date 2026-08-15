@@ -1,11 +1,31 @@
 import { describe, expect, test, vi } from 'vitest';
 import Fastify from 'fastify';
 import { migrate, openDatabase } from '../src/server/db.js';
-import { assertSafeUrl, proxyRequest } from '../src/server/proxy/service.js';
+import { assertSafeUrl, proxyRequest, resolvePublicHost } from '../src/server/proxy/service.js';
 import { registerPublicRoutes } from '../src/server/routes/public.js';
 import { createSource } from '../src/server/sources/repository.js';
 
 describe('controlled proxy', () => {
+  test('falls back to public DoH answers when local DNS returns proxy fake IPs', async () => {
+    const lookup = vi.fn(async () => [
+      { address: '198.18.0.82', family: 4 as const },
+      { address: 'fdfe:dcba:9876::3d', family: 6 as const },
+    ]) as unknown as typeof import('node:dns/promises').lookup;
+    const dohFetch = vi.fn(async (url: URL | RequestInfo) => {
+      const type = new URL(url.toString()).searchParams.get('type');
+      return new Response(JSON.stringify({
+        Status: 0,
+        Answer: type === '1'
+          ? [{ type: 1, data: '104.21.35.81' }]
+          : [{ type: 28, data: '2606:4700:3034::6815:2351' }],
+      }), { headers: { 'content-type': 'application/dns-json' } });
+    });
+    await expect(resolvePublicHost('feed.example', lookup, dohFetch)).resolves.toEqual([
+      { address: '104.21.35.81', family: 4 },
+      { address: '2606:4700:3034::6815:2351', family: 6 },
+    ]);
+  });
+
   test('rejects unsafe protocols and private, loopback, link-local, and metadata addresses', async () => {
     const resolve = vi.fn(async (host: string) => [{ address: host === 'safe.example' ? '93.184.216.34' : host, family: 4 as const }]);
     await expect(assertSafeUrl(new URL('ftp://safe.example'), resolve)).rejects.toThrow(/protocol/i);
