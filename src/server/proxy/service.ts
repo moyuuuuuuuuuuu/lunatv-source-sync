@@ -13,6 +13,10 @@ interface DohResponse {
   Answer?: Array<{ type?: number; data?: string }>;
 }
 
+function preferIpv4(addresses: readonly { address: string; family: number }[]): readonly { address: string; family: number }[] {
+  return [...addresses].sort((left, right) => Number(left.family !== 4) - Number(right.family !== 4));
+}
+
 async function resolveWithDoh(hostname: string, fetchImpl: DohFetch): Promise<readonly { address: string; family: number }[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5_000);
@@ -44,12 +48,12 @@ export async function resolvePublicHost(
   dohFetch: DohFetch = fetch,
 ): Promise<readonly { address: string; family: number }[]> {
   const local = await lookupImpl(hostname, { all: true, verbatim: true });
-  if (local.length && local.every(({ address }) => !isUnsafeAddress(address))) return local;
+  if (local.length && local.every(({ address }) => !isUnsafeAddress(address))) return preferIpv4(local);
   try {
     const publicAnswers = await resolveWithDoh(hostname, dohFetch);
-    return publicAnswers.length ? publicAnswers : local;
+    return preferIpv4(publicAnswers.length ? publicAnswers : local);
   } catch {
-    return local;
+    return preferIpv4(local);
   }
 }
 
@@ -81,6 +85,7 @@ function pinnedFetch(url: URL, init: RequestInit, target: { address: string; fam
     const transport = url.protocol === 'https:' ? https : http;
     const request = transport.request(url, {
       method: init.method ?? 'GET', headers: init.headers as http.OutgoingHttpHeaders,
+      family: target.family,
       lookup: ((_hostname: string, lookupOptions: object, callback: (...args: unknown[]) => void) => {
         if ('all' in lookupOptions && lookupOptions.all) {
           callback(null, [{ address: target.address, family: target.family }]);
@@ -98,6 +103,7 @@ function pinnedFetch(url: URL, init: RequestInit, target: { address: string; fam
       resolve(new Response(Readable.toWeb(incoming) as ReadableStream, { status: incoming.statusCode ?? 502, headers }));
     });
     request.once('error', reject);
+    request.once('socket', (socket) => socket.once('error', reject));
     request.end();
   });
 }

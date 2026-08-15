@@ -6,6 +6,17 @@ import { registerPublicRoutes } from '../src/server/routes/public.js';
 import { createSource } from '../src/server/sources/repository.js';
 
 describe('controlled proxy', () => {
+  test('prefers IPv4 when local DNS also returns IPv6', async () => {
+    const lookup = vi.fn(async () => [
+      { address: '2606:4700:3035::ac43:9fe8', family: 6 as const },
+      { address: '172.67.159.232', family: 4 as const },
+    ]) as unknown as typeof import('node:dns/promises').lookup;
+    await expect(resolvePublicHost('dual-stack.example', lookup)).resolves.toEqual([
+      { address: '172.67.159.232', family: 4 },
+      { address: '2606:4700:3035::ac43:9fe8', family: 6 },
+    ]);
+  });
+
   test('falls back to public DoH answers when local DNS returns proxy fake IPs', async () => {
     const lookup = vi.fn(async () => [
       { address: '198.18.0.82', family: 4 as const },
