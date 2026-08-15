@@ -16,6 +16,7 @@ services:
       SECURE_COOKIES: "${SECURE_COOKIES:-false}"
       TRUST_PROXY: "${TRUST_PROXY:-false}"
       OUTBOUND_PROXY_URL: "${OUTBOUND_PROXY_URL:-}"
+      OUTBOUND_PROXY_REMOTE_DNS: "${OUTBOUND_PROXY_REMOTE_DNS:-false}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

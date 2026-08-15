@@ -100,6 +100,14 @@ function proxyAuthorization(proxy: URL): string | undefined {
   return `Basic ${Buffer.from(`${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`).toString('base64')}`;
 }
 
+function proxyResolvesHostname(): boolean {
+  const value = process.env.OUTBOUND_PROXY_REMOTE_DNS?.trim().toLowerCase();
+  if (!value) return false;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error('OUTBOUND_PROXY_REMOTE_DNS must be true or false');
+}
+
 function tunnelAgent(url: URL, target: { address: string; family: number }, proxy: URL, signal?: AbortSignal): http.Agent | https.Agent {
   const agent = url.protocol === 'https:' ? new https.Agent({ keepAlive: false }) : new http.Agent({ keepAlive: false });
   const createConnection = (_options: object, callback: (error: Error | null, socket?: import('node:net').Socket) => void) => {
@@ -118,7 +126,8 @@ function tunnelAgent(url: URL, target: { address: string; family: number }, prox
       finish(error);
     };
     const destinationPort = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
-    const authority = `${target.address}:${destinationPort}`;
+    const destinationHost = proxyResolvesHostname() ? url.hostname : target.address;
+    const authority = `${destinationHost}:${destinationPort}`;
     const authorization = proxyAuthorization(proxy);
     const request = http.request({
       hostname: proxy.hostname,

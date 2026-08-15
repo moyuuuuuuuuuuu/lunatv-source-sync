@@ -60,9 +60,12 @@ TRUST_PROXY=true
 
 ```dotenv
 OUTBOUND_PROXY_URL=http://host.docker.internal:7890
+OUTBOUND_PROXY_REMOTE_DNS=true
 ```
 
 Compose 已将 `host.docker.internal` 映射到宿主机网关。代理服务必须允许来自 Docker 网桥的连接；修改后需要重建容器。未配置时所有请求保持直连。目标地址即使通过代理访问，也会先执行协议、DNS/IP、重定向和 SSRF 安全校验。
+
+`OUTBOUND_PROXY_REMOTE_DNS=true` 会在目标域名通过本地公网地址安全校验后，把域名交给可信代理解析，使 Mihomo/Clash 能按域名规则选择线路。该模式只应连接自己控制的代理；不需要域名分流或代理不可信时请保持默认值 `false`，此时项目会固定连接已校验的公网 IP。
 
 ## 导入、分类与覆盖
 

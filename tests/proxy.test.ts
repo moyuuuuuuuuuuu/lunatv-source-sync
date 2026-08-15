@@ -108,6 +108,39 @@ describe('controlled proxy', () => {
     }
   });
 
+  test('can let a trusted outbound proxy resolve and route the verified hostname', async () => {
+    let connectTarget = '';
+    const proxy = http.createServer();
+    proxy.on('connect', (request, socket) => {
+      connectTarget = request.url ?? '';
+      socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+      socket.once('data', () => {
+        const body = '{"list":[]}';
+        socket.end(`HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n${body}`);
+      });
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
+    const address = proxy.address();
+    if (!address || typeof address === 'string') throw new Error('Proxy did not listen');
+    const previousProxy = process.env.OUTBOUND_PROXY_URL;
+    const previousRemoteDns = process.env.OUTBOUND_PROXY_REMOTE_DNS;
+    process.env.OUTBOUND_PROXY_URL = `http://127.0.0.1:${address.port}`;
+    process.env.OUTBOUND_PROXY_REMOTE_DNS = 'true';
+    try {
+      await proxyRequest({
+        upstream: 'http://up.example/api', query: {},
+        resolve: async () => [{ address: '93.184.216.34', family: 4 }],
+      });
+      expect(connectTarget).toBe('up.example:80');
+    } finally {
+      if (previousProxy === undefined) delete process.env.OUTBOUND_PROXY_URL;
+      else process.env.OUTBOUND_PROXY_URL = previousProxy;
+      if (previousRemoteDns === undefined) delete process.env.OUTBOUND_PROXY_REMOTE_DNS;
+      else process.env.OUTBOUND_PROXY_REMOTE_DNS = previousRemoteDns;
+      await new Promise<void>((resolve, reject) => proxy.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
   test('enforces timeout while the outbound proxy tunnel is pending', async () => {
     const proxy = http.createServer();
     const tunnelSockets = new Set<import('node:stream').Duplex>();
