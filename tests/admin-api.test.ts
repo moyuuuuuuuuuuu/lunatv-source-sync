@@ -62,6 +62,17 @@ describe('authentication', () => {
     for (let index = 0; index < 5; index += 1) await app.inject({ method: 'POST', url: '/api/auth/login', remoteAddress: '10.0.0.9', payload: { username: 'admin', password: 'bad' } });
     expect((await app.inject({ method: 'POST', url: '/api/auth/login', remoteAddress: '10.0.0.9', payload: { username: 'admin', password: 'bad' } })).statusCode).toBe(429);
   });
+
+  test('changes the persisted admin password and invalidates active sessions', async () => {
+    const { app } = await fixture(); const auth = await login(app);
+    const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
+    expect((await app.inject({ method: 'POST', url: '/api/admin/password/change', headers, payload: { currentPassword: 'wrong password', newPassword: 'new secure password' } })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'POST', url: '/api/admin/password/change', headers, payload: { currentPassword: 'correct horse', newPassword: 'short' } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: '/api/admin/password/change', headers, payload: { currentPassword: 'correct horse', newPassword: 'new secure password' } })).statusCode).toBe(204);
+    expect((await app.inject({ url: '/api/auth/session', headers: { cookie: auth.cookie } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'admin', password: 'correct horse' } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'admin', password: 'new secure password' } })).statusCode).toBe(200);
+  });
 });
 
 describe('management API', () => {

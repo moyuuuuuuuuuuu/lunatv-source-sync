@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { getSession, SESSION_COOKIE } from '../auth/service.js';
+import { adminPasswordMatches, getSession, hashAdminPassword, SESSION_COOKIE } from '../auth/service.js';
 import { getHealthSettings } from '../health/repository.js';
 import type { SchedulerHandle } from '../health/scheduler.js';
 import { applyImport, previewImport } from '../sources/import.js';
@@ -131,5 +131,18 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
   app.post('/subscription-token/reset', async (_request, reply) => {
     options.config.subscriptionToken = resetSubscriptionToken(options.db);
     return { reset: true };
+  });
+  app.post('/password/change', async (request, reply) => {
+    const body = request.body as { currentPassword?: unknown; newPassword?: unknown } | null;
+    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 2 || typeof body.currentPassword !== 'string' || typeof body.newPassword !== 'string' || body.newPassword.length < 10 || body.newPassword.length > 128) {
+      return reply.code(400).send({ error: 'Password must be between 10 and 128 characters', code: 'INVALID_PASSWORD' });
+    }
+    const currentPassword = body.currentPassword; const newPassword = body.newPassword;
+    if (!adminPasswordMatches(options.db, currentPassword, options.config.adminPassword, options.config.sessionSecret)) return reply.code(403).send({ error: 'Current password is incorrect', code: 'INVALID_CURRENT_PASSWORD' });
+    options.db.transaction(() => {
+      options.db.prepare("UPDATE settings SET setting_value = ?, updated_at = CURRENT_TIMESTAMP WHERE setting_key = 'admin_password_hash'").run(hashAdminPassword(newPassword, options.config.sessionSecret));
+      options.db.prepare('DELETE FROM sessions').run();
+    })();
+    return reply.code(204).send();
   });
 }

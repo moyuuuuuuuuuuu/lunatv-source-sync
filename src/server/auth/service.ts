@@ -8,6 +8,18 @@ function digest(value: string, secret: string): Buffer {
   return createHmac('sha256', secret).update(value).digest();
 }
 
+export function hashAdminPassword(value: string, secret: string): string {
+  return digest(value, secret).toString('hex');
+}
+
+export function adminPasswordMatches(db: Database.Database, value: string, fallback: string, secret: string): boolean {
+  const row = db.prepare("SELECT setting_value FROM settings WHERE setting_key = 'admin_password_hash'").get() as { setting_value: string } | undefined;
+  if (!row?.setting_value) return credentialsMatch(value, fallback, secret);
+  const actual = digest(value, secret);
+  const expected = Buffer.from(row.setting_value, 'hex');
+  return expected.length === actual.length && timingSafeEqual(actual, expected);
+}
+
 export function credentialsMatch(actual: string, expected: string, secret: string): boolean {
   return timingSafeEqual(digest(actual, secret), digest(expected, secret));
 }

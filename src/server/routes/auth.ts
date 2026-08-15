@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { FastifyInstance } from 'fastify';
 import type { AppConfig } from '../types.js';
-import { credentialsMatch, createSession, deleteSession, getSession, SESSION_COOKIE } from '../auth/service.js';
+import { adminPasswordMatches, credentialsMatch, createSession, deleteSession, getSession, SESSION_COOKIE } from '../auth/service.js';
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 5;
@@ -21,7 +21,7 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRouteOptio
     const username = typeof body?.username === 'string' ? body.username : '';
     const password = typeof body?.password === 'string' ? body.password : '';
     const usernameValid = credentialsMatch(username, options.config.adminUsername, options.config.sessionSecret);
-    const passwordValid = credentialsMatch(password, options.config.adminPassword, options.config.sessionSecret);
+    const passwordValid = adminPasswordMatches(options.db, password, options.config.adminPassword, options.config.sessionSecret);
     const valid = usernameValid && passwordValid;
     if (!valid) {
       if (!failures.has(key) && failures.size >= MAX_TRACKED_CLIENTS) failures.delete(failures.keys().next().value as string);

@@ -61,7 +61,8 @@ INSERT OR IGNORE INTO settings (setting_key, setting_value) VALUES
   ('failure_threshold', '3'),
   ('cache_time', '7200'),
   ('next_check_at', ''),
-  ('subscription_token', '');
+  ('subscription_token', ''),
+  ('admin_password_hash', '');
 
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
