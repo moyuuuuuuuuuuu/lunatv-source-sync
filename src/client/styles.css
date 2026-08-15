@@ -88,8 +88,13 @@ td b, td code, td small { display: block } td code { margin: 4px 0; color: var(-
 .tag, .status { font-size: 12px; font-weight: 500; background: #f5f5f5; border: 1px solid #d9d9d9; border-radius: 4px; padding: 2px 7px; display: inline-block }.status.healthy { background: #f6ffed; border-color: #b7eb8f; color: #389e0d }.status.unhealthy { background: #fff2f0; border-color: #ffccc7; color: #cf1322 }
 .pager { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 22px }.empty { text-align: center; padding: 50px; color: var(--muted) }
 
-.modal { position: fixed; z-index: 20; inset: 0; background: rgba(8,20,16,.72); backdrop-filter: blur(5px); display: grid; place-items: center; padding: 20px }
-.dialog { width: min(680px,100%); max-height: 90vh; overflow: auto; padding: 24px }.dialog .page-head { margin-bottom: 12px }
+.modal { position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 20px; animation: modal-fade .18s ease-out }
+.dialog { width: min(680px,100%); max-height: 90vh; overflow: auto; padding: 24px; border-radius: 8px; box-shadow: 0 6px 16px 0 rgba(0,0,0,.08), 0 3px 6px -4px rgba(0,0,0,.12), 0 9px 28px 8px rgba(0,0,0,.05); animation: modal-rise .2s ease-out }.dialog .page-head { margin-bottom: 12px }
+.confirm-dialog { width: min(416px,100%); padding: 24px; box-shadow: 0 6px 16px rgba(0,0,0,.12); animation: modal-rise .2s ease-out }
+.confirm-content { display: flex; align-items: flex-start; gap: 16px }.confirm-content h2 { margin: 0; font-size: 16px; letter-spacing: 0; font-weight: 600 }.confirm-content p { margin: 8px 0 0; line-height: 1.6; font-size: 14px }
+.confirm-icon { width: 22px; height: 22px; flex: 0 0 22px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #faad14; font-weight: 700 }
+.confirm-dialog footer { justify-content: flex-end; margin-top: 24px }.danger-primary { background: #ff4d4f }.danger-primary:hover { background: #ff7875 }
+@keyframes modal-fade { from { opacity: 0 } } @keyframes modal-rise { from { opacity: 0; transform: scale(.96) translateY(-8px) } }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px }.form-grid .wide { grid-column: 1/-1 }.checks { display: flex; align-items: end; gap: 20px }.checks label { display: flex }.checks input { width: auto }
 .dialog footer, .settings footer { justify-content: flex-end; margin-top: 22px }.drop { padding: 30px; border: 2px dashed #b9cec4; border-radius: 13px; text-align: center; background: #f8fbf9 }.preview { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 18px }.preview b { text-align: center; background: #f1f6f3; padding: 16px; border-radius: 10px }.errors { max-height: 190px; overflow: auto; background: #fff4f4; padding: 14px 14px 14px 35px }.settings { padding: 28px }.settings small { display: block }.settings>.primary { margin-top: 24px }
 .url-import-form { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 10px; margin-top: 18px }.url-import-form label { margin: 0 }.url-import-form button { white-space: nowrap }
