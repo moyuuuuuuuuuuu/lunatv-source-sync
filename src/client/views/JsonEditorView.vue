@@ -14,7 +14,24 @@ const jsonTemplate = `{
       "_comment": "可选备注",
       "adult": false
     }
-  }
+  },
+  "live_sources": [
+    {
+      "key": "live-example",
+      "name": "示例直播源",
+      "url": "https://example.com/live.m3u",
+      "category": "general"
+    }
+  ],
+  "vod_sources": [
+    {
+      "key": "tvbox-example",
+      "name": "示例 TVBox 配置",
+      "url": "https://example.com/tvbox.json",
+      "kind": "tvbox",
+      "category": "general"
+    }
+  ]
 }`;
 const DRAFT_KEY = 'lunatv-json-editor-draft';
 function readDraft(){try{return sessionStorage.getItem(DRAFT_KEY)||jsonTemplate}catch{return jsonTemplate}}

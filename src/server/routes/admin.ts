@@ -6,7 +6,7 @@ import type { SchedulerHandle } from '../health/scheduler.js';
 import { applyImport, previewImport, type DuplicateApiPolicy } from '../sources/import.js';
 import { fetchRemoteImport, type ImportUrlOptions } from '../sources/url-import.js';
 import { bulkSetEnabled, createSource, deleteDuplicateApiSources, deleteSource, deleteSources, deleteUnhealthySources, getSourceByApi, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
-import type { AppConfig, HealthStatus } from '../types.js';
+import type { AppConfig, ContentCategory, HealthStatus, SourceType } from '../types.js';
 import { resetSubscriptionToken } from '../subscription/token.js';
 
 export interface AdminRouteOptions { db: Database.Database; config: AppConfig; scheduler: SchedulerHandle; importUrlOptions?: ImportUrlOptions }
@@ -18,7 +18,7 @@ function ids(value: unknown): number[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.length > 500) return null;
   const parsed = value.map(Number); return parsed.every((id) => Number.isInteger(id) && id > 0) ? [...new Set(parsed)] : null;
 }
-const SOURCE_FIELDS = new Set(['sourceKey', 'name', 'api', 'detail', 'comment', 'classificationMode', 'enabled', 'ignoreHealthCheck']);
+const SOURCE_FIELDS = new Set(['sourceKey', 'name', 'api', 'sourceType', 'contentCategory', 'detail', 'comment', 'classificationMode', 'enabled', 'ignoreHealthCheck']);
 function sourceInput(value: unknown, create: true): CreateSourceInput | null;
 function sourceInput(value: unknown, create: false): UpdateSourceInput | null;
 function sourceInput(value: unknown, create: boolean): CreateSourceInput | UpdateSourceInput | null {
@@ -35,6 +35,8 @@ function sourceInput(value: unknown, create: boolean): CreateSourceInput | Updat
   }
   for (const field of ['detail', 'comment'] as const) if (body[field] !== undefined && body[field] !== null && typeof body[field] !== 'string') return null;
   if (body.classificationMode !== undefined && !['auto', 'adult', 'normal'].includes(String(body.classificationMode))) return null;
+  if (body.sourceType !== undefined && !['vod_api', 'live_m3u', 'tvbox', 'navigation'].includes(String(body.sourceType))) return null;
+  if (body.contentCategory !== undefined && !['general', 'movie', 'short_drama'].includes(String(body.contentCategory))) return null;
   for (const field of ['enabled', 'ignoreHealthCheck'] as const) if (body[field] !== undefined && typeof body[field] !== 'boolean') return null;
   return Object.fromEntries(keys.map((key) => [key, body[key]])) as unknown as CreateSourceInput | UpdateSourceInput;
 }
@@ -61,13 +63,15 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
   });
   app.get('/sources', async (request, reply) => {
     const q = request.query as Record<string, unknown>;
-    if (Object.keys(q).some((key) => !['search', 'classification', 'healthStatus', 'enabled', 'page', 'pageSize', 'sort'].includes(key))) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
+    if (Object.keys(q).some((key) => !['search', 'classification', 'sourceType', 'contentCategory', 'healthStatus', 'enabled', 'page', 'pageSize', 'sort'].includes(key))) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
     const classification = typeof q.classification === 'string' && ['adult', 'normal'].includes(q.classification) ? q.classification as 'adult' | 'normal' : undefined;
     const healthStatus = typeof q.healthStatus === 'string' && ['unknown', 'healthy', 'unhealthy'].includes(q.healthStatus) ? q.healthStatus as HealthStatus : undefined;
+    const sourceType = typeof q.sourceType === 'string' && ['vod_api', 'live_m3u', 'tvbox', 'navigation'].includes(q.sourceType) ? q.sourceType as SourceType : undefined;
+    const contentCategory = typeof q.contentCategory === 'string' && ['general', 'movie', 'short_drama'].includes(q.contentCategory) ? q.contentCategory as ContentCategory : undefined;
     const sort = typeof q.sort === 'string' && ['latencyAsc', 'latencyDesc'].includes(q.sort) ? q.sort as 'latencyAsc' | 'latencyDesc' : undefined;
     const page = queryInteger(q.page, 1, 1_000_000); const pageSize = queryInteger(q.pageSize, 50, 200);
-    if (q.search !== undefined && typeof q.search !== 'string' || q.classification !== undefined && !classification || q.healthStatus !== undefined && !healthStatus || q.enabled !== undefined && !['true', 'false'].includes(String(q.enabled)) || q.sort !== undefined && !sort || page === null || pageSize === null) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
-    return listSources(options.db, { search: q.search as string | undefined, classification, healthStatus, enabled: q.enabled === undefined ? undefined : q.enabled === 'true', page, pageSize, sort });
+    if (q.search !== undefined && typeof q.search !== 'string' || q.classification !== undefined && !classification || q.sourceType !== undefined && !sourceType || q.contentCategory !== undefined && !contentCategory || q.healthStatus !== undefined && !healthStatus || q.enabled !== undefined && !['true', 'false'].includes(String(q.enabled)) || q.sort !== undefined && !sort || page === null || pageSize === null) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
+    return listSources(options.db, { search: q.search as string | undefined, classification, sourceType, contentCategory, healthStatus, enabled: q.enabled === undefined ? undefined : q.enabled === 'true', page, pageSize, sort });
   });
   app.post('/sources', async (request, reply) => {
     const body = request.body as Record<string, unknown> | null;
@@ -113,7 +117,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
     const updated = entries.reduce((count, entry) => count + Number(Boolean(exists.get(entry.sourceKey))), 0);
     return { inserted: entries.length - updated, updated };
   };
-  app.post('/import/preview', async (request, reply) => { try { const preview = previewImport(request.body, options.config.adultKeywordsExtra); return { ...preview, ...importCounts(preview.entries), invalid: preview.errors.length }; } catch { return reply.code(422).send({ error: 'api_site must be an object', code: 'INVALID_IMPORT' }); } });
+  app.post('/import/preview', async (request, reply) => { try { const preview = previewImport(request.body, options.config.adultKeywordsExtra); return { ...preview, ...importCounts(preview.entries), invalid: preview.errors.length }; } catch { return reply.code(422).send({ error: 'Unsupported import document', code: 'INVALID_IMPORT' }); } });
   app.post('/import/url-preview', async (request, reply) => {
     const body = request.body as { url?: unknown } | null;
     if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || typeof body.url !== 'string') return reply.code(400).send({ error: 'Invalid import URL', code: 'INVALID_URL' });
@@ -135,7 +139,7 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
     if (!['skip', 'overwrite'].includes(policy)) return reply.code(400).send({ error: 'Invalid duplicate API policy', code: 'INVALID_INPUT' });
     const preview = previewImport(wrapped ? body.document : request.body, options.config.adultKeywordsExtra);
     return { ...applyImport(options.db, preview, policy), invalid: preview.errors.length, errors: preview.errors };
-  } catch { return reply.code(422).send({ error: 'api_site must be an object', code: 'INVALID_IMPORT' }); } });
+  } catch { return reply.code(422).send({ error: 'Unsupported import document', code: 'INVALID_IMPORT' }); } });
   app.get('/settings', async () => getHealthSettings(options.db));
   app.put('/settings', async (request, reply) => {
     const body = request.body as Record<string, unknown> | null; const entries = [

@@ -40,6 +40,7 @@ describe('subscriptions', () => {
 
   test('validates public route query, token, output format, and preflight', async () => {
     createSource(db, { sourceKey: 'normal', name: 'Normal', api: 'https://public.example/api' });
+    createSource(db, { sourceKey: 'live', name: 'Live', api: 'https://public.example/live.m3u', sourceType: 'live_m3u', contentCategory: 'general' });
     const app = Fastify();
     registerPublicRoutes(app, { db, subscriptionToken: 'secret' });
     expect((await app.inject('/api/source')).statusCode).toBe(401);
@@ -47,12 +48,15 @@ describe('subscriptions', () => {
     expect((await app.inject('/api/source?token=secret&source=no')).statusCode).toBe(400);
     expect((await app.inject('/api/source?token=secret&format=no')).statusCode).toBe(400);
     expect((await app.inject('/api/source?token=secret&proxy=no')).statusCode).toBe(400);
+    expect((await app.inject('/api/source?token=secret&type=live_m3u&ac=list')).statusCode).toBe(400);
     const json = await app.inject('/api/source?token=secret');
     expect(json.statusCode).toBe(200);
     expect(json.headers['access-control-allow-origin']).toBe('*');
     expect(json.json()).toMatchObject({ cache_time: 7200, api_site: { normal: { name: 'Normal' } } });
     const encoded = await app.inject('/api/source?token=secret&format=base58');
     expect(encoded.body).toBe(base58EncodeUtf8(JSON.stringify(json.json())));
+    const live = await app.inject('/api/source?token=secret&type=live_m3u&category=general');
+    expect(live.json()).toEqual({ type: 'live_m3u', sources: [{ key: 'live', name: 'Live', url: 'https://public.example/live.m3u', category: 'general' }] });
     const preflight = await app.inject({ method: 'OPTIONS', url: '/api/source' });
     expect(preflight.statusCode).toBe(204);
     expect(preflight.headers['access-control-allow-origin']).toBe('*');

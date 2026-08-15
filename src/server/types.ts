@@ -1,12 +1,16 @@
 export type HealthStatus = 'unknown' | 'healthy' | 'unhealthy';
 
 export type ClassificationMode = 'auto' | 'adult' | 'normal';
+export type SourceType = 'vod_api' | 'live_m3u' | 'tvbox' | 'navigation';
+export type ContentCategory = 'general' | 'movie' | 'short_drama';
 
 export interface SourceRecord {
   id: number;
   sourceKey: string;
   name: string;
   api: string;
+  sourceType: SourceType;
+  contentCategory: ContentCategory;
   detail: string | null;
   comment: string | null;
   classificationMode: ClassificationMode;

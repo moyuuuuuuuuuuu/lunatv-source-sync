@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { ClassificationMode, HealthStatus, SourceRecord } from '../types.js';
+import type { ClassificationMode, ContentCategory, HealthStatus, SourceRecord, SourceType } from '../types.js';
 import { classifyAdult } from './classify.js';
 
 interface SourceRow {
@@ -7,6 +7,8 @@ interface SourceRow {
   source_key: string;
   name: string;
   api: string;
+  source_type: SourceType;
+  content_category: ContentCategory;
   detail: string | null;
   comment: string | null;
   classification_mode: ClassificationMode;
@@ -26,6 +28,8 @@ export interface CreateSourceInput {
   sourceKey: string;
   name: string;
   api: string;
+  sourceType?: SourceType;
+  contentCategory?: ContentCategory;
   detail?: string | null;
   comment?: string | null;
   classificationMode?: ClassificationMode;
@@ -44,6 +48,8 @@ export interface ListSourceOptions {
   classification?: 'adult' | 'normal';
   enabled?: boolean;
   healthStatus?: HealthStatus;
+  sourceType?: SourceType;
+  contentCategory?: ContentCategory;
   page?: number;
   pageSize?: number;
   sort?: 'latencyAsc' | 'latencyDesc';
@@ -51,7 +57,7 @@ export interface ListSourceOptions {
 
 function mapRow(row: SourceRow): SourceRecord {
   return {
-    id: row.id, sourceKey: row.source_key, name: row.name, api: row.api,
+    id: row.id, sourceKey: row.source_key, name: row.name, api: row.api, sourceType: row.source_type, contentCategory: row.content_category,
     detail: row.detail, comment: row.comment, classificationMode: row.classification_mode,
     isAdult: Boolean(row.is_adult), enabled: Boolean(row.enabled),
     ignoreHealthCheck: Boolean(row.ignore_health_check), healthStatus: row.health_status,
@@ -113,6 +119,8 @@ export function listSources(db: Database.Database, options: ListSourceOptions = 
     where.push('health_status = @healthStatus');
     params.healthStatus = options.healthStatus;
   }
+  if (options.sourceType) { where.push('source_type = @sourceType'); params.sourceType = options.sourceType; }
+  if (options.contentCategory) { where.push('content_category = @contentCategory'); params.contentCategory = options.contentCategory; }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const page = Math.max(1, Math.trunc(options.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.trunc(options.pageSize ?? 50)));
@@ -132,13 +140,15 @@ export function createSource(db: Database.Database, input: CreateSourceInput): S
   const name = requireText(input.name, 'name');
   const api = requireText(input.api, 'api');
   const classificationMode = input.classificationMode ?? 'auto';
+  const sourceType = input.sourceType ?? 'vod_api';
+  const contentCategory = input.contentCategory ?? (sourceType === 'vod_api' ? 'movie' : 'general');
   const isAdult = classificationMode === 'adult' || (classificationMode === 'auto' && classifyAdult({
     sourceKey, name, api, detail: input.detail, comment: input.comment,
   }, input.extraKeywords));
   const result = db.prepare(`INSERT INTO sources (
-    source_key, name, api, detail, comment, classification_mode, is_adult, enabled, ignore_health_check
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    sourceKey, name, api, input.detail ?? null, input.comment ?? null, classificationMode,
+    source_key, name, api, source_type, content_category, detail, comment, classification_mode, is_adult, enabled, ignore_health_check
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    sourceKey, name, api, sourceType, contentCategory, input.detail ?? null, input.comment ?? null, classificationMode,
     Number(isAdult), Number(input.enabled ?? true), Number(input.ignoreHealthCheck ?? false),
   );
   return getSourceById(db, Number(result.lastInsertRowid))!;
@@ -150,16 +160,18 @@ export function updateSource(db: Database.Database, id: number, input: UpdateSou
   const sourceKey = input.sourceKey === undefined ? current.sourceKey : requireText(input.sourceKey, 'sourceKey');
   const name = input.name === undefined ? current.name : requireText(input.name, 'name');
   const api = input.api === undefined ? current.api : requireText(input.api, 'api');
+  const sourceType = input.sourceType ?? current.sourceType;
+  const contentCategory = input.contentCategory ?? current.contentCategory;
   const detail = input.detail === undefined ? current.detail : input.detail;
   const comment = input.comment === undefined ? current.comment : input.comment;
   const classificationMode = input.classificationMode ?? current.classificationMode;
   const isAdult = classificationMode === 'adult' || (classificationMode === 'auto' && classifyAdult({
     sourceKey, name, api, detail, comment,
   }, input.extraKeywords));
-  db.prepare(`UPDATE sources SET source_key = ?, name = ?, api = ?, detail = ?, comment = ?,
+  db.prepare(`UPDATE sources SET source_key = ?, name = ?, api = ?, source_type = ?, content_category = ?, detail = ?, comment = ?,
     classification_mode = ?, is_adult = ?, enabled = ?, ignore_health_check = ?,
     updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
-    sourceKey, name, api, detail, comment, classificationMode, Number(isAdult),
+    sourceKey, name, api, sourceType, contentCategory, detail, comment, classificationMode, Number(isAdult),
     Number(input.enabled ?? current.enabled), Number(input.ignoreHealthCheck ?? current.ignoreHealthCheck), id,
   );
   return getSourceById(db, id);

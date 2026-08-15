@@ -100,7 +100,7 @@ input:focus, select:focus, button:focus-visible { outline: 0; border-color: #167
 .copy-row { display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 16px 3px; border-top: 1px solid #edf2ef }
 .copy-row div { min-width: 0 }.copy-row b, .copy-row code { display: block }.copy-row b { font-size: 13px }.copy-row code { color: #708078; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 6px; font-size: 12px }
 
-.filters { display: grid; grid-template-columns: 2fr repeat(4,1fr); gap: 10px; padding: 14px; margin-bottom: 16px }.filters label { margin: 0 }
+.filters { display: grid; grid-template-columns: 2fr repeat(6,minmax(120px,1fr)); gap: 10px; padding: 14px; margin-bottom: 16px }.filters label { margin: 0 }
 .bulk { padding: 11px 14px; color: var(--ink); background: var(--selection-bg); border: 1px solid var(--selection-border); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px }.bulk b { margin-right: auto }
 .table-wrap { overflow: auto; box-shadow: 0 10px 35px rgba(31,62,51,.045) }
 .sources-page { height: calc(100dvh - 162px); min-height: 0; display: flex; flex-direction: column }.sources-page>.page-head,.sources-page>.filters,.sources-page>.bulk,.sources-page>.error,.sources-page>.pager { flex: 0 0 auto }

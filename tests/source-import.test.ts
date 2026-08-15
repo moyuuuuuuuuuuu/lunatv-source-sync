@@ -56,9 +56,27 @@ describe('source import and repository', () => {
   });
 
   test('rejects malformed payloads without writing', () => {
-    expect(() => previewImport(null)).toThrow(/api_site/i);
+    expect(() => previewImport(null)).toThrow(/import document/i);
     expect(() => previewImport({ api_site: [] })).toThrow(/api_site/i);
     expect(listSources(db).total).toBe(0);
+  });
+
+  test('imports live M3U and TVBox catalogs with source types and content categories', () => {
+    const preview = previewImport({
+      live_sources: [{ key: 'live', name: 'Live', url: 'https://example.com/live.m3u', network: 'ipv4' }],
+      vod_sources: [
+        { key: 'box', name: 'TVBox', url: 'https://example.com/box.json', kind: 'tvbox' },
+        { key: 'short', name: 'Short Drama', url: 'https://example.com/short.json', kind: 'tvbox', category: 'short_drama' },
+      ],
+    });
+    expect(preview.errors).toEqual([]);
+    expect(preview.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceKey: 'live', sourceType: 'live_m3u', contentCategory: 'general' }),
+      expect.objectContaining({ sourceKey: 'box', sourceType: 'tvbox', contentCategory: 'general' }),
+      expect.objectContaining({ sourceKey: 'short', sourceType: 'tvbox', contentCategory: 'short_drama' }),
+    ]));
+    expect(applyImport(db, preview)).toEqual({ inserted: 3, updated: 0, skipped: 0 });
+    expect(getSourceByKey(db, 'live')).toMatchObject({ sourceType: 'live_m3u', contentCategory: 'general' });
   });
 
   test('overwrites business fields while retaining health state and history', () => {

@@ -1,6 +1,6 @@
 # LunaTV Source Sync
 
-一个面向单管理员私有部署的 LunaTV 影视源管理器。它提供 JSON 导入与同键覆盖、成人源分类、定时健康检查、JSON/Base58 订阅，以及只允许访问数据库内已启用来源的受控 CORS 代理。
+一个面向单管理员私有部署的 LunaTV 来源管理器。它支持标准点播 API、M3U 直播源和 TVBox/导航配置，并提供分类、健康检查、JSON/Base58 订阅及受控 CORS 代理。
 
 ## 免责声明
 
@@ -69,7 +69,13 @@ Compose 已将 `host.docker.internal` 映射到宿主机网关。代理服务必
 
 ## 导入、分类与覆盖
 
-管理页面接受 LunaTV `api_site` 对象。既可以选择本地 JSON 文件，也可以输入 HTTP(S) URL；URL 返回内容会自动识别为 JSON 或 Bitcoin Base58 编码的 JSON。远程拉取会拒绝私网、回环、链路本地和元数据地址，并限制重定向、超时与响应大小。导入预览会逐项报告错误；确认导入后，以来源 key 为唯一键：同 key 更新名称、API、备注和分类，但保留当前健康状态与历史记录。上传原文件和远程原文都不会持久保存。
+管理页面支持在一个 JSON 中组合导入三类集合：
+
+- `api_site`：LunaTV 标准点播 API 对象，条目使用 `api`。
+- `live_sources`：M3U 直播源数组，条目使用 `url`。
+- `vod_sources`：TVBox 或导航配置数组，条目使用 `url`，以 `kind: "tvbox" | "navigation"` 区分。
+
+条目可用 `category: "general" | "movie" | "short_drama"` 标记综合、影视或短剧；未填写时，标准点播 API 默认为影视，其余类型默认为综合。既可以选择本地 JSON 文件，也可以输入 HTTP(S) URL；URL 返回内容会自动识别为 JSON 或 Bitcoin Base58 编码的 JSON。远程拉取会拒绝私网、回环、链路本地和元数据地址，并限制重定向、超时与响应大小。导入预览会逐项报告错误；确认导入后，以来源 key 为唯一键，同 key 更新来源信息但保留当前健康状态与历史记录。上传原文件和远程原文都不会持久保存。
 
 成人分类默认根据 key、名称、URL 和备注关键词自动判断。编辑来源可将分类模式显式改为“成人”或“普通”，覆盖自动判断；`ADULT_KEYWORDS_EXTRA` 可添加逗号分隔的自定义关键词。
 
@@ -84,9 +90,11 @@ Compose 已将 `host.docker.internal` 映射到宿主机网关。代理服务必
 /api/source?ac=list&source=adult&format=json&proxy=0&token=YOUR_TOKEN
 /api/source?ac=list&source=all&format=base58&proxy=0&token=YOUR_TOKEN
 /api/source?ac=list&source=normal&format=json&proxy=1&token=YOUR_TOKEN
+/api/source?type=live_m3u&category=general&source=all&format=json&proxy=0&token=YOUR_TOKEN
+/api/source?type=tvbox&category=all&source=all&format=json&proxy=0&token=YOUR_TOKEN
 ```
 
-`source` 仅接受 `normal`、`adult`、`all`，`format` 仅接受 `json`、`base58`。`proxy=1` 会把订阅里的 API 地址改写到 `/api/proxy/:sourceKey`。该代理不能传入任意 URL，只代理数据库中已启用的来源，并拒绝私网、回环、链路本地及元数据地址；它不是通用反向代理。
+`ac=list` 只作为 LunaTV 标准点播 API 的兼容参数，不用于区分内容。来源协议通过 `type=vod_api|live_m3u|tvbox|navigation` 选择，内容用途通过 `category=all|general|movie|short_drama` 选择；`source=normal|adult|all` 继续负责成人分类过滤，`format` 接受 `json|base58`。省略 `type` 时默认为 `vod_api`，且只有该类型允许同时传入 `ac=list`。`proxy=1` 会把订阅里的来源地址改写到 `/api/proxy/:sourceKey`。该代理不能传入任意 URL，只代理数据库中已启用的来源，并拒绝私网、回环、链路本地及元数据地址；它不是通用反向代理。
 
 轮换订阅 token：在管理后台点击“重置令牌”，再同步更新所有 LunaTV 客户端；旧地址会立即失效。轮换 `SESSION_SECRET` 会立即使所有管理会话失效，需要重新登录。
 

@@ -40,6 +40,16 @@ describe('source health checking', () => {
     })).toMatchObject({ status: 'unhealthy', errorCode: 'upstream_http', errorMessage: 'HTTP 429: {"error":"rate limited"}' });
   });
 
+  test('validates M3U and TVBox sources without adding ac=list', async () => {
+    const db = database();
+    const live = createSource(db, { sourceKey: 'live', name: 'Live', api: 'https://example.com/live.m3u', sourceType: 'live_m3u' });
+    const liveFetch = vi.fn(async (_url: URL | RequestInfo, _init?: RequestInit) => new Response('#EXTM3U\n#EXTINF:-1,News\nhttps://stream.example/live.m3u8'));
+    expect(await checkSource(live, getHealthSettings(db), { fetchImpl: liveFetch, resolve })).toMatchObject({ status: 'healthy' });
+    expect(liveFetch.mock.calls[0][0].toString()).toBe('https://example.com/live.m3u');
+    const box = createSource(db, { sourceKey: 'box', name: 'Box', api: 'https://example.com/box.json', sourceType: 'tvbox' });
+    expect(await checkSource(box, getHealthSettings(db), { fetchImpl: async () => new Response('{"sites":[]}'), resolve })).toMatchObject({ status: 'healthy' });
+  });
+
   test('times out each attempt and reports a compact timeout error', async () => {
     const db = database(); const source = createSource(db, { sourceKey: 'one', name: 'One', api: 'https://example.com/api' });
     db.prepare("UPDATE settings SET setting_value = '2' WHERE setting_key = 'request_timeout_ms'").run();

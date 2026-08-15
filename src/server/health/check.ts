@@ -1,6 +1,6 @@
 import type { ResolveHost } from '../proxy/service.js';
 import { ProxyTimeoutError, proxyRequest } from '../proxy/service.js';
-import type { Settings, SourceRecord } from '../types.js';
+import type { Settings, SourceRecord, SourceType } from '../types.js';
 
 export interface CheckResult {
   status: 'healthy' | 'unhealthy';
@@ -18,9 +18,17 @@ export interface CheckOptions {
   maxRetries?: number;
 }
 
-function validBody(body: Uint8Array, contentType: string | null): boolean {
+function validBody(body: Uint8Array, contentType: string | null, sourceType: SourceType): boolean {
   const text = new TextDecoder().decode(body).trim();
   if (!text) return false;
+  if (sourceType === 'live_m3u') return /^#EXTM3U\b/i.test(text) && /#EXTINF:/i.test(text);
+  if (sourceType === 'navigation') return true;
+  if (sourceType === 'tvbox') {
+    try {
+      const value = JSON.parse(text) as Record<string, unknown>;
+      return Boolean(value && typeof value === 'object' && (Array.isArray(value.sites) || Array.isArray(value.lives) || typeof value.spider === 'string'));
+    } catch { return false; }
+  }
   const jsonLike = contentType?.toLowerCase().includes('json') || /^[{[]/.test(text);
   if (jsonLike) {
     try {
@@ -64,15 +72,15 @@ export async function checkSource(
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const result = await proxyRequest({
-        upstream: source.api, query: { ac: 'list' }, timeoutMs: settings.requestTimeoutMs,
+        upstream: source.api, query: source.sourceType === 'vod_api' ? { ac: 'list' } : {}, timeoutMs: settings.requestTimeoutMs,
         requestHeaders: {
-          accept: 'application/json, application/xml, text/xml, */*',
+          accept: source.sourceType === 'live_m3u' ? 'application/vnd.apple.mpegurl, audio/mpegurl, text/plain, */*' : 'application/json, application/xml, text/xml, */*',
           'user-agent': 'LunaTV-Source-Sync/0.1 HealthCheck',
         },
         maxResponseBytes: 2 * 1024 * 1024, fetchImpl: options.fetchImpl, resolve: options.resolve,
       });
       if (result.status < 200 || result.status >= 300) throw new Error(`HTTP ${result.status}: ${responseExcerpt(result.body)}`);
-      if (!validBody(result.body, result.headers['content-type'] ?? null)) throw new Error(`Invalid response body: ${responseExcerpt(result.body)}`);
+      if (!validBody(result.body, result.headers['content-type'] ?? null, source.sourceType)) throw new Error(`Invalid response body: ${responseExcerpt(result.body)}`);
       return { status: 'healthy', latencyMs: Math.max(0, Date.now() - started), checkedAt: now().toISOString(), errorCode: null, errorMessage: null, attempts: attempt };
     } catch (error) { lastError = error; }
   }

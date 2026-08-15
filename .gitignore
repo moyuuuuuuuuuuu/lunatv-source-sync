@@ -6,6 +6,7 @@ node_modules/
 dist/
 coverage/
 .codegraph/
+imports/live-vod-sources.json
 *.db
 *.db-shm
 *.db-wal

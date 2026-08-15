@@ -3,6 +3,10 @@ CREATE TABLE IF NOT EXISTS sources (
   source_key TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   api TEXT NOT NULL,
+  source_type TEXT NOT NULL DEFAULT 'vod_api'
+    CHECK (source_type IN ('vod_api', 'live_m3u', 'tvbox', 'navigation')),
+  content_category TEXT NOT NULL DEFAULT 'general'
+    CHECK (content_category IN ('general', 'movie', 'short_drama')),
   detail TEXT,
   comment TEXT,
   classification_mode TEXT NOT NULL DEFAULT 'auto'
