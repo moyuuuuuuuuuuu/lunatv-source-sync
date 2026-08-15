@@ -213,7 +213,7 @@ Run: `npm test -- tests/health.test.ts && npm test`
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit health checking**
+- [x] **Step 6: Commit health checking**
 
 ```bash
 git add src/server/health tests/health.test.ts
@@ -235,25 +235,25 @@ git commit -m "feat: add scheduled source health checks"
 - Produces: `buildApp(options): Promise<FastifyInstance>`
 - Produces: login/logout/session middleware and `/api/admin/*` endpoints
 
-- [ ] **Step 1: Write failing authentication and API tests**
+- [x] **Step 1: Write failing authentication and API tests**
 
 Cover successful/failed login, HttpOnly/SameSite cookie, logout, unauthenticated rejection, login throttling, CSRF enforcement for writes, import preview/apply, CRUD and bulk actions, immediate checks, settings validation, dashboard counts, and secret redaction.
 
-- [ ] **Step 2: Run the API tests and confirm failure**
+- [x] **Step 2: Run the API tests and confirm failure**
 
 Run: `npm test -- tests/admin-api.test.ts`
 
 Expected: missing app/auth modules.
 
-- [ ] **Step 3: Implement environment-backed authentication**
+- [x] **Step 3: Implement environment-backed authentication**
 
 Compare credentials using timing-safe comparisons, store only a hash of random session tokens with expiry in SQLite, rotate on login, use secure cookies when configured behind HTTPS, and require a session-bound CSRF header for state changes.
 
-- [ ] **Step 4: Implement management API and application composition**
+- [x] **Step 4: Implement management API and application composition**
 
 Expose narrowly validated endpoints for dashboard, sources, import preview/apply, bulk changes, health triggers, health history, settings, and subscription examples. Register public routes separately from session-protected admin routes.
 
-- [ ] **Step 5: Run API, full test, and typecheck suites**
+- [x] **Step 5: Run API, full test, and typecheck suites**
 
 Run: `npm test -- tests/admin-api.test.ts && npm test && npm run typecheck`
 
