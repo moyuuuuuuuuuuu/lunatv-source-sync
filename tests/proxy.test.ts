@@ -6,14 +6,13 @@ import { registerPublicRoutes } from '../src/server/routes/public.js';
 import { createSource } from '../src/server/sources/repository.js';
 
 describe('controlled proxy', () => {
-  test('prefers IPv4 when local DNS also returns IPv6', async () => {
+  test('uses only IPv4 when local DNS also returns unusable IPv6', async () => {
     const lookup = vi.fn(async () => [
       { address: '2606:4700:3035::ac43:9fe8', family: 6 as const },
       { address: '172.67.159.232', family: 4 as const },
     ]) as unknown as typeof import('node:dns/promises').lookup;
     await expect(resolvePublicHost('dual-stack.example', lookup)).resolves.toEqual([
       { address: '172.67.159.232', family: 4 },
-      { address: '2606:4700:3035::ac43:9fe8', family: 6 },
     ]);
   });
 
@@ -33,7 +32,6 @@ describe('controlled proxy', () => {
     });
     await expect(resolvePublicHost('feed.example', lookup, dohFetch)).resolves.toEqual([
       { address: '104.21.35.81', family: 4 },
-      { address: '2606:4700:3034::6815:2351', family: 6 },
     ]);
   });
 

@@ -13,8 +13,12 @@ interface DohResponse {
   Answer?: Array<{ type?: number; data?: string }>;
 }
 
-function preferIpv4(addresses: readonly { address: string; family: number }[]): readonly { address: string; family: number }[] {
-  return [...addresses].sort((left, right) => Number(left.family !== 4) - Number(right.family !== 4));
+function supportedAddresses(addresses: readonly { address: string; family: number }[]): readonly { address: string; family: number }[] {
+  // The target deployment is commonly a NAS/container without an IPv6 route.
+  // On affected Node 22 builds an IPv6 TLS connect can emit EADDRNOTAVAIL on
+  // the socket before the ClientRequest error handler is attached and crash
+  // the process. Do not create IPv6 sockets in the default network path.
+  return addresses.filter(({ family }) => family === 4);
 }
 
 async function resolveWithDoh(hostname: string, fetchImpl: DohFetch): Promise<readonly { address: string; family: number }[]> {
@@ -48,12 +52,12 @@ export async function resolvePublicHost(
   dohFetch: DohFetch = fetch,
 ): Promise<readonly { address: string; family: number }[]> {
   const local = await lookupImpl(hostname, { all: true, verbatim: true });
-  if (local.length && local.every(({ address }) => !isUnsafeAddress(address))) return preferIpv4(local);
+  if (local.length && local.every(({ address }) => !isUnsafeAddress(address))) return supportedAddresses(local);
   try {
     const publicAnswers = await resolveWithDoh(hostname, dohFetch);
-    return preferIpv4(publicAnswers.length ? publicAnswers : local);
+    return supportedAddresses(publicAnswers.length ? publicAnswers : local);
   } catch {
-    return preferIpv4(local);
+    return supportedAddresses(local);
   }
 }
 
