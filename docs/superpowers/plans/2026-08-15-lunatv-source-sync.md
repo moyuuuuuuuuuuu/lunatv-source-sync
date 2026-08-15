@@ -116,7 +116,7 @@ Run: `npm test -- tests/source-import.test.ts && npm test`
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit source management core**
+- [x] **Step 6: Commit source management core**
 
 ```bash
 git add src/server/sources tests/source-import.test.ts
@@ -140,29 +140,29 @@ git commit -m "feat: import and classify LunaTV sources"
 - Produces: `buildSubscription(options): LunaConfig`
 - Produces: public routes `/api/source` and `/api/proxy/:sourceKey`
 
-- [ ] **Step 1: Write failing subscription tests**
+- [x] **Step 1: Write failing subscription tests**
 
 Assert default normal filtering; explicit normal/adult/all filtering; enabled and failure-threshold rules; omission of internal fields; JSON shape; reference-compatible Base58 output; token validation; `ac`, `format`, `proxy`, and `source` validation; and CORS preflight behavior.
 
-- [ ] **Step 2: Write failing proxy safety tests**
+- [x] **Step 2: Write failing proxy safety tests**
 
 Assert lookup by registered source key, query merging, refusal of disabled/missing sources, rejection of loopback/private/link-local/metadata IPv4 and IPv6 addresses, redirect revalidation, stripped sensitive headers, timeout behavior, and CORS response headers.
 
-- [ ] **Step 3: Run the focused tests and confirm failure**
+- [x] **Step 3: Run the focused tests and confirm failure**
 
 Run: `npm test -- tests/subscription.test.ts tests/proxy.test.ts`
 
 Expected: missing implementation failures.
 
-- [ ] **Step 4: Implement subscription and Base58 generation**
+- [x] **Step 4: Implement subscription and Base58 generation**
 
 Serialize compact UTF-8 JSON and encode with `123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz`. When `proxy=1`, replace only each emitted source's `api` with an absolute `/api/proxy/:sourceKey` URL including the configured token when present.
 
-- [ ] **Step 5: Implement the controlled proxy**
+- [x] **Step 5: Implement the controlled proxy**
 
 Resolve the source solely by path key, validate protocol and every resolved address before connecting, manually follow a small redirect limit with repeated validation, merge LunaTV query parameters with the upstream URL, limit time and response size, and expose only safe response headers.
 
-- [ ] **Step 6: Register public routes and run tests**
+- [x] **Step 6: Register public routes and run tests**
 
 Run: `npm test -- tests/subscription.test.ts tests/proxy.test.ts && npm run typecheck`
 
