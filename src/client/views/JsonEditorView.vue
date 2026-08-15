@@ -30,7 +30,7 @@ onBeforeUnmount(saveDraft);
 
 async function validate() {
   busy.value=true; error.value=''; message.value=''; preview.value=undefined;
-  try { document.value=JSON.parse(text.value); preview.value=await api.send('/api/admin/import/preview','POST',document.value); }
+  try { document.value=JSON.parse(text.value); preview.value=await api.send('/api/admin/import/preview','POST',document.value); await nextTick(); globalThis.document.querySelector('.json-editor .preview')?.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
   catch(cause){error.value=cause instanceof SyntaxError?`JSON 语法错误：${cause.message}`:cause instanceof Error?cause.message:'JSON 无效'}
   finally{busy.value=false}
 }
