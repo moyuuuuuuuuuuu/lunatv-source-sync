@@ -7,7 +7,7 @@ export interface ClassifiableSource {
 }
 
 const BUILT_IN_KEYWORDS = [
-  '18+', 'adult', 'av', 'porn', 'porno', 'sex', 'xxx', 'hentai',
+  '🔞', '18+', 'adult', 'av', 'porn', 'porno', 'sex', 'xxx', 'hentai',
   '成人视频', '成人', '情色', '色情', '福利', '无码', '有码', '里番',
 ];
 

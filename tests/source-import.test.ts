@@ -25,13 +25,14 @@ describe('source import and repository', () => {
   test('validates entries and classifies automatic and explicit adult values', () => {
     expect(classifyAdult({ name: '普通', api: 'https://example.com' })).toBe(false);
     expect(classifyAdult({ name: 'Java Video', api: 'https://example.com' })).toBe(false);
+    expect(classifyAdult({ name: '🔞 成人专区', api: 'https://example.com' })).toBe(true);
     expect(classifyAdult({ name: '成人视频', api: 'https://example.com' })).toBe(true);
     expect(classifyAdult({ name: 'Custom Zone', api: 'https://example.com' }, ['custom'])).toBe(true);
 
     const preview = previewImport({
       cache_time: 60,
       api_site: {
-        normal: { name: 'Normal', api: 'https://normal.example/api', adult: false },
+        normal: { name: '🔞 Explicit Normal', api: 'https://normal.example/api', adult: false },
         auto_adult: { name: '18+ Movies', api: 'https://adult.example/api' },
         forced_adult: { name: 'Safe Name', api: 'https://safe.example/api', adult: true },
         invalid: { name: '', api: 'https://invalid.example/api' },
