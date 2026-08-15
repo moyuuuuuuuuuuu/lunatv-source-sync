@@ -6,10 +6,12 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = init.method ?? 'GET';
+  const body = init.body ?? (!['GET', 'HEAD'].includes(method) ? JSON.stringify({}) : undefined);
   const headers = new Headers(init.headers);
-  if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
-  if (csrfToken && !['GET', 'HEAD'].includes(init.method ?? 'GET')) headers.set('x-csrf-token', csrfToken);
-  const response = await fetch(path, { ...init, headers, credentials: 'same-origin' });
+  if (body && !headers.has('content-type')) headers.set('content-type', 'application/json');
+  if (csrfToken && !['GET', 'HEAD'].includes(method)) headers.set('x-csrf-token', csrfToken);
+  const response = await fetch(path, { ...init, body, headers, credentials: 'same-origin' });
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string; code?: string };
     throw new ApiError(body.error || `请求失败 (${response.status})`, response.status, body.code);

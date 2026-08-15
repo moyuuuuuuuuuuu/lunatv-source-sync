@@ -179,6 +179,8 @@ describe('management API', () => {
     const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
     const emptyPost = await app.inject({ method: 'POST', url: '/api/admin/health/check', headers: { ...headers, 'content-length': '0' } });
     expect(emptyPost.statusCode).toBe(200);
+    const proxiedEmptyPost = await app.inject({ method: 'POST', url: '/api/admin/health/check', headers: { ...headers, 'content-type': 'application/x-proxy-empty', 'content-length': '0' } });
+    expect(proxiedEmptyPost.statusCode).toBe(200);
     const untypedBody = await app.inject({ method: 'POST', url: '/api/admin/health/check', headers, payload: Buffer.from('unexpected') });
     expect(untypedBody.statusCode).toBe(415);
     const created = await app.inject({ method: 'POST', url: '/api/admin/sources', headers, payload: { sourceKey: 'one', name: 'One', api: 'https://example.com/api' } });

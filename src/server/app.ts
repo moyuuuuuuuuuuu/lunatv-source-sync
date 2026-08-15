@@ -22,10 +22,10 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     trustProxy: options.config.trustProxy,
     bodyLimit: 6 * 1024 * 1024,
   });
-  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (_request, body, done) => {
-    // Fastify treats a request without Content-Type as octet-stream whenever a
-    // proxy/browser adds Content-Length: 0. Accept only the genuinely empty
-    // variant; unknown non-empty bodies must remain unsupported.
+  app.addContentTypeParser('*', { parseAs: 'buffer' }, (_request, body, done) => {
+    // Proxies may add Content-Length: 0 or an otherwise unknown Content-Type to
+    // bodyless writes. Accept only genuinely empty unknown bodies; known JSON
+    // requests still use Fastify's JSON parser and non-empty unknown bodies fail.
     if (body.length === 0) return done(null, undefined);
     const error = Object.assign(new Error('Unsupported Media Type'), {
       statusCode: 415,
