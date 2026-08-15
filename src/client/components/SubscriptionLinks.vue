@@ -5,7 +5,7 @@ import ConfirmDialog from './ConfirmDialog.vue';
 
 type SourceType = 'normal' | 'adult' | 'all';
 type FormatType = 'json' | 'base58';
-type CatalogType = 'vod_api' | 'live_m3u' | 'tvbox' | 'navigation';
+type CatalogType = 'vod_api' | 'live_m3u' | 'tvbox' | 'navigation' | 'all';
 type ContentCategory = 'all' | 'general' | 'movie' | 'short_drama';
 interface SubscriptionExamples { normalJson?: string; tokenCanReset?: boolean }
 
@@ -77,6 +77,7 @@ onMounted(load);
       <div class="subscription-options">
         <label>来源类型
           <select v-model="catalogType">
+            <option value="all">全部 LunaTV 来源（点播＋直播）</option>
             <option value="vod_api">影视点播 API</option>
             <option value="live_m3u">直播 M3U</option>
             <option value="tvbox">TVBox 配置</option>
@@ -92,7 +93,7 @@ onMounted(load);
           </select>
         </label>
         <label>视频源类型
-          <select v-model="source" :disabled="catalogType!=='vod_api'">
+          <select v-model="source">
             <option value="normal">普通源</option>
             <option value="adult">成人源</option>
             <option value="all">全部源</option>

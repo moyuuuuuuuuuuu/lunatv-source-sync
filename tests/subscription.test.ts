@@ -57,6 +57,12 @@ describe('subscriptions', () => {
     expect(encoded.body).toBe(base58EncodeUtf8(JSON.stringify(json.json())));
     const live = await app.inject('/api/source?token=secret&type=live_m3u&category=general');
     expect(live.json()).toEqual({ type: 'live_m3u', sources: [{ key: 'live', name: 'Live', url: 'https://public.example/live.m3u', category: 'general' }] });
+    const all = await app.inject('/api/source?token=secret&type=all&source=all');
+    expect(all.json()).toMatchObject({
+      cache_time: 7200,
+      api_site: { normal: { name: 'Normal' } },
+      lives: { live: { name: 'Live', url: 'https://public.example/live.m3u' } },
+    });
     const preflight = await app.inject({ method: 'OPTIONS', url: '/api/source' });
     expect(preflight.statusCode).toBe(204);
     expect(preflight.headers['access-control-allow-origin']).toBe('*');

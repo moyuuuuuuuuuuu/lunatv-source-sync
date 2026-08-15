@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { getSourceByKey } from '../sources/repository.js';
 import { ProxyTimeoutError, proxyRequest, type ProxyRequestOptions } from '../proxy/service.js';
 import { base58EncodeUtf8 } from '../subscription/base58.js';
-import { buildSourceCatalog, buildSubscription, type SubscriptionCategory, type SubscriptionContentCategory, type SubscriptionSourceType } from '../subscription/service.js';
+import { buildAllSourceCatalog, buildSourceCatalog, buildSubscription, type SubscriptionCategory, type SubscriptionContentCategory, type SubscriptionSourceType } from '../subscription/service.js';
 
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',
@@ -58,7 +58,7 @@ export function registerPublicRoutes(app: FastifyInstance, options: PublicRouteO
     const category = first(query.category) ?? 'all';
     const proxy = first(query.proxy) ?? '0';
     if ((ac && (ac !== 'list' || type !== 'vod_api')) || !['normal', 'adult', 'all'].includes(source)
-      || !['vod_api', 'live_m3u', 'tvbox', 'navigation'].includes(type) || !['general', 'movie', 'short_drama', 'all'].includes(category)
+      || !['vod_api', 'live_m3u', 'tvbox', 'navigation', 'all'].includes(type) || !['general', 'movie', 'short_drama', 'all'].includes(category)
       || !['json', 'base58'].includes(format) || !['0', '1'].includes(proxy)) {
       return cors(reply).code(400).send({ error: 'Invalid subscription parameters' });
     }
@@ -72,7 +72,11 @@ export function registerPublicRoutes(app: FastifyInstance, options: PublicRouteO
       baseUrl: `${request.protocol}://${request.host}`,
       token,
     };
-    const config = type === 'vod_api' ? buildSubscription(common) : buildSourceCatalog({ ...common, sourceType: type as Exclude<SubscriptionSourceType, 'vod_api'> });
+    const config = type === 'vod_api'
+      ? buildSubscription(common)
+      : type === 'all'
+        ? buildAllSourceCatalog(common)
+        : buildSourceCatalog({ ...common, sourceType: type as Exclude<SubscriptionSourceType, 'vod_api' | 'all'> });
     const json = JSON.stringify(config);
     cors(reply);
     if (format === 'base58') return reply.type('text/plain; charset=utf-8').send(base58EncodeUtf8(json));

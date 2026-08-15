@@ -94,7 +94,7 @@ Compose 已将 `host.docker.internal` 映射到宿主机网关。代理服务必
 /api/source?type=tvbox&category=all&source=all&format=json&proxy=0&token=YOUR_TOKEN
 ```
 
-`ac=list` 只作为 LunaTV 标准点播 API 的兼容参数，不用于区分内容。来源协议通过 `type=vod_api|live_m3u|tvbox|navigation` 选择，内容用途通过 `category=all|general|movie|short_drama` 选择；`source=normal|adult|all` 继续负责成人分类过滤，`format` 接受 `json|base58`。省略 `type` 时默认为 `vod_api`，且只有该类型允许同时传入 `ac=list`。`proxy=1` 会把订阅里的来源地址改写到 `/api/proxy/:sourceKey`。该代理不能传入任意 URL，只代理数据库中已启用的来源，并拒绝私网、回环、链路本地及元数据地址；它不是通用反向代理。
+`ac=list` 只作为 LunaTV 标准点播 API 的兼容参数，不用于区分内容。来源协议通过 `type=vod_api|live_m3u|tvbox|navigation|all` 选择；`all` 按 LunaTV 配置格式返回点播 `api_site` 与直播 `lives`，可用一个 Base58 地址同时导入这两类来源。内容用途通过 `category=all|general|movie|short_drama` 选择；`source=normal|adult|all` 继续负责成人分类过滤，`format` 接受 `json|base58`。省略 `type` 时默认为 `vod_api`，且只有该类型允许同时传入 `ac=list`。TVBox 配置地址与配置导航不是 LunaTV 配置订阅字段，仍用于本项目管理、检测和导出，不能通过“全部 LunaTV 来源”直接装入 LunaTV。`proxy=1` 会把订阅里的来源地址改写到 `/api/proxy/:sourceKey`。该代理不能传入任意 URL，只代理数据库中已启用的来源，并拒绝私网、回环、链路本地及元数据地址；它不是通用反向代理。
 
 轮换订阅 token：在管理后台点击“重置令牌”，再同步更新所有 LunaTV 客户端；旧地址会立即失效。轮换 `SESSION_SECRET` 会立即使所有管理会话失效，需要重新登录。
 

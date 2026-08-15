@@ -4,7 +4,7 @@ export interface LunaSource { name: string; api: string; detail?: string; }
 export interface LunaConfig { cache_time: number; api_site: Record<string, LunaSource>; }
 export type SubscriptionCategory = 'normal' | 'adult' | 'all';
 export type SubscriptionContentCategory = 'general' | 'movie' | 'short_drama' | 'all';
-export type SubscriptionSourceType = 'vod_api' | 'live_m3u' | 'tvbox' | 'navigation';
+export type SubscriptionSourceType = 'vod_api' | 'live_m3u' | 'tvbox' | 'navigation' | 'all';
 
 interface PublicSourceRow {
   source_key: string; name: string; api: string; detail: string | null; is_adult: number;
@@ -47,7 +47,7 @@ export function buildSubscription(options: BuildSubscriptionOptions): LunaConfig
   return { cache_time: options.cacheTime, api_site };
 }
 
-export function buildSourceCatalog(options: BuildSubscriptionOptions & { sourceType: Exclude<SubscriptionSourceType, 'vod_api'> }): {
+export function buildSourceCatalog(options: BuildSubscriptionOptions & { sourceType: Exclude<SubscriptionSourceType, 'vod_api' | 'all'> }): {
   type: string; sources: Array<{ key: string; name: string; url: string; category: string }>;
 } {
   const category = options.source ?? 'normal';
@@ -67,5 +67,19 @@ export function buildSourceCatalog(options: BuildSubscriptionOptions & { sourceT
         : row.api,
       category: row.content_category,
     })),
+  };
+}
+
+export function buildAllSourceCatalog(options: BuildSubscriptionOptions): {
+  cache_time: number;
+  api_site: Record<string, LunaSource>;
+  lives: Record<string, { name: string; url: string }>;
+} {
+  const vod = buildSubscription(options);
+  const live = buildSourceCatalog({ ...options, sourceType: 'live_m3u' });
+  return {
+    cache_time: vod.cache_time,
+    api_site: vod.api_site,
+    lives: Object.fromEntries(live.sources.map((source) => [source.key, { name: source.name, url: source.url }])),
   };
 }
