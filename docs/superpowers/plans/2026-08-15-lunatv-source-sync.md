@@ -259,7 +259,7 @@ Run: `npm test -- tests/admin-api.test.ts && npm test && npm run typecheck`
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit the application API**
+- [x] **Step 6: Commit the application API**
 
 ```bash
 git add src/server tests/admin-api.test.ts
@@ -286,19 +286,19 @@ git commit -m "feat: add authenticated management API"
 - Consumes: `/api/auth/*` and `/api/admin/*`
 - Produces: responsive single-admin SPA built into `dist/client`
 
-- [ ] **Step 1: Build the shared client API and login flow**
+- [x] **Step 1: Build the shared client API and login flow**
 
 Implement credentialed requests, CSRF header propagation, safe error messages, session bootstrap, login, and logout.
 
-- [ ] **Step 2: Build dashboard and source management**
+- [x] **Step 2: Build dashboard and source management**
 
 Render required counts/statuses, searchable/filterable source table, pagination, CRUD editor, bulk selection/actions, manual health checks, and clear status/error displays.
 
-- [ ] **Step 3: Build import, settings, and subscription panels**
+- [x] **Step 3: Build import, settings, and subscription panels**
 
 Support JSON file selection, preview counts and item errors before apply; integer-hour/timeout/threshold/cache settings; and copyable URLs for source, format, and proxy combinations without revealing the token in logs.
 
-- [ ] **Step 4: Verify the production build**
+- [x] **Step 4: Verify the production build**
 
 Run: `npm run build && npm run typecheck`
 

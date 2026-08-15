@@ -1,6 +1,9 @@
 import cookie from '@fastify/cookie';
+import staticPlugin from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type Database from 'better-sqlite3';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { AppConfig } from './types.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerAdminRoutes } from './routes/admin.js';
@@ -19,6 +22,14 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   if (options.startHealthScheduler === false) scheduler.stop();
   await app.register(async (admin) => registerAdminRoutes(admin, { db: options.db, config: options.config, scheduler }), { prefix: '/api/admin' });
   app.get('/health', async () => ({ status: 'ok' }));
+  const clientRoot = resolve(process.cwd(), 'dist/client');
+  if (existsSync(resolve(clientRoot, 'index.html'))) {
+    await app.register(staticPlugin, { root: clientRoot, wildcard: false });
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method === 'GET' && !request.url.startsWith('/api/') && request.url !== '/health') return reply.sendFile('index.html');
+      return reply.code(404).send({ error: 'Not found', code: 'NOT_FOUND' });
+    });
+  }
   app.addHook('onClose', async () => scheduler.stop());
   await app.ready();
   return app;
