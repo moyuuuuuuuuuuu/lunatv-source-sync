@@ -31,6 +31,9 @@ describe('source health checking', () => {
     expect(await checkSource(source, getHealthSettings(db), { fetchImpl, resolve })).toMatchObject({ status: 'unhealthy', errorCode: 'invalid_response', attempts: 3 });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect((await checkSource(source, getHealthSettings(db), { fetchImpl: async () => new Response(''), resolve })).status).toBe('unhealthy');
+    expect(await checkSource(source, getHealthSettings(db), {
+      fetchImpl: async () => new Response('{"error":"rate limited"}', { status: 429 }), resolve, maxRetries: 0,
+    })).toMatchObject({ status: 'unhealthy', errorCode: 'upstream_http', errorMessage: 'HTTP 429: {"error":"rate limited"}' });
   });
 
   test('times out each attempt and reports a compact timeout error', async () => {

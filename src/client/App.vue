@@ -7,8 +7,9 @@ import LoginView from './views/LoginView.vue';
 import DashboardView from './views/DashboardView.vue';
 import SourcesView from './views/SourcesView.vue';
 import SettingsView from './views/SettingsView.vue';
+import JsonEditorView from './views/JsonEditorView.vue';
 
-type Page = 'dashboard' | 'sources' | 'settings';
+type Page = 'dashboard' | 'sources' | 'editor' | 'settings';
 type ThemeMode = 'light' | 'dark';
 const ready = ref(false);
 const authenticated = ref(false);
@@ -19,6 +20,7 @@ const themeMode = ref<ThemeMode>(currentHour >= 6 && currentHour < 18 ? 'light' 
 const navigation = [
   { id: 'dashboard' as const, label: '运行概览', icon: '⌁' },
   { id: 'sources' as const, label: '视频源管理', icon: '◫' },
+  { id: 'editor' as const, label: 'JSON 编辑器', icon: '{}' },
   { id: 'settings' as const, label: '系统设置', icon: '⚙' },
 ];
 const currentLabel = computed(() => navigation.find((item) => item.id === page.value)?.label || '运行概览');
@@ -100,6 +102,7 @@ function passwordChanged() { showPassword.value = false; authenticated.value = f
       <main class="content-area">
         <DashboardView v-if="page === 'dashboard'" @open-sources="page = 'sources'" />
         <SourcesView v-else-if="page === 'sources'" />
+        <JsonEditorView v-else-if="page === 'editor'" />
         <SettingsView v-else />
       </main>
     </div>

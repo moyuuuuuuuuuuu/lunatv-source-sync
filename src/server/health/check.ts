@@ -40,10 +40,16 @@ function validBody(body: Uint8Array, contentType: string | null): boolean {
 function errorDetails(error: unknown): { code: string; message: string } {
   if (error instanceof ProxyTimeoutError) return { code: 'timeout', message: error.message };
   if (error instanceof Error) {
-    const code = error.message === 'Invalid response body' ? 'invalid_response' : 'request_failed';
-    return { code, message: error.message.slice(0, 300) };
+    const code = error.message.startsWith('Invalid response body') ? 'invalid_response'
+      : error.message.startsWith('HTTP ') ? 'upstream_http' : 'request_failed';
+    return { code, message: error.message.slice(0, 600) };
   }
   return { code: 'request_failed', message: 'Unknown health check error' };
+}
+
+function responseExcerpt(body: Uint8Array): string {
+  const text = new TextDecoder().decode(body).replace(/\s+/g, ' ').trim();
+  return text ? text.slice(0, 500) : '(empty response)';
 }
 
 export async function checkSource(
@@ -61,9 +67,8 @@ export async function checkSource(
         upstream: source.api, query: { ac: 'list' }, timeoutMs: settings.requestTimeoutMs,
         maxResponseBytes: 2 * 1024 * 1024, fetchImpl: options.fetchImpl, resolve: options.resolve,
       });
-      if (result.status < 200 || result.status >= 300 || !validBody(result.body, result.headers['content-type'] ?? null)) {
-        throw new Error('Invalid response body');
-      }
+      if (result.status < 200 || result.status >= 300) throw new Error(`HTTP ${result.status}: ${responseExcerpt(result.body)}`);
+      if (!validBody(result.body, result.headers['content-type'] ?? null)) throw new Error(`Invalid response body: ${responseExcerpt(result.body)}`);
       return { status: 'healthy', latencyMs: Math.max(0, Date.now() - started), checkedAt: now().toISOString(), errorCode: null, errorMessage: null, attempts: attempt };
     } catch (error) { lastError = error; }
   }

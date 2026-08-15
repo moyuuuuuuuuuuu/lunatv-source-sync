@@ -193,7 +193,7 @@ describe('management API', () => {
     expect((await app.inject({ url: `/api/admin/sources/${id}/health`, headers })).json().items).toHaveLength(1);
     expect((await app.inject({ url: '/api/admin/dashboard', headers })).json()).toMatchObject({ total: 1, normal: 1, healthy: 1 });
     expect((await app.inject({ method: 'PUT', url: '/api/admin/settings', headers, payload: { checkIntervalHours: 0 } })).statusCode).toBe(400);
-    expect((await app.inject({ method: 'PUT', url: '/api/admin/settings', headers, payload: { checkIntervalHours: 12, requestTimeoutMs: 5000, failureThreshold: 2, cacheTime: 3600, token: 'secret' } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'PUT', url: '/api/admin/settings', headers, payload: { checkIntervalHours: 12, requestTimeoutMs: 5000, failureThreshold: 2, cacheTime: 3600, nextCheckAt: 'read-only' } })).statusCode).toBe(400);
     const settings = await app.inject({ method: 'PUT', url: '/api/admin/settings', headers, payload: { checkIntervalHours: 12, requestTimeoutMs: 5000, failureThreshold: 2, cacheTime: 3600 } });
     expect(settings.json()).toMatchObject({ checkIntervalHours: 12, requestTimeoutMs: 5000, failureThreshold: 2, cacheTime: 3600 });
     const examples = await app.inject({ url: '/api/admin/subscription-examples', headers: { ...headers, host: 'example.test' } });

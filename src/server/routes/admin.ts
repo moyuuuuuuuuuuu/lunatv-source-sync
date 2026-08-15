@@ -5,7 +5,7 @@ import { getHealthSettings } from '../health/repository.js';
 import type { SchedulerHandle } from '../health/scheduler.js';
 import { applyImport, previewImport, type DuplicateApiPolicy } from '../sources/import.js';
 import { fetchRemoteImport, type ImportUrlOptions } from '../sources/url-import.js';
-import { bulkSetEnabled, createSource, deleteSource, deleteSources, deleteUnhealthySources, getSourceByApi, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
+import { bulkSetEnabled, createSource, deleteDuplicateApiSources, deleteSource, deleteSources, deleteUnhealthySources, getSourceByApi, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
 import type { AppConfig, HealthStatus } from '../types.js';
 import { resetSubscriptionToken } from '../subscription/token.js';
 
@@ -98,7 +98,14 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
     return { affected: body.action === 'delete' ? deleteSources(options.db, sourceIds) : bulkSetEnabled(options.db, sourceIds, body.action === 'enable') };
   });
   app.post('/sources/remove-unhealthy', async () => ({ affected: deleteUnhealthySources(options.db) }));
-  app.post('/sources/:id/check', async (request, reply) => { const id = idParam(request); if (!id) return reply.code(400).send({ error: 'Invalid source id', code: 'INVALID_INPUT' }); if (!getSourceById(options.db, id)) return reply.code(404).send({ error: 'Source not found', code: 'NOT_FOUND' }); return options.scheduler.checkSources([id]); });
+  app.post('/sources/remove-duplicates', async () => deleteDuplicateApiSources(options.db));
+  app.post('/sources/:id/check', async (request, reply) => {
+    const id = idParam(request); if (!id) return reply.code(400).send({ error: 'Invalid source id', code: 'INVALID_INPUT' });
+    if (!getSourceById(options.db, id)) return reply.code(404).send({ error: 'Source not found', code: 'NOT_FOUND' });
+    const summary = await options.scheduler.checkSources([id]);
+    const result = options.db.prepare('SELECT status, latency_ms latencyMs, error_code errorCode, error_message errorMessage, checked_at checkedAt FROM health_checks WHERE source_id = ? ORDER BY checked_at DESC, id DESC LIMIT 1').get(id);
+    return { ...summary, result };
+  });
   app.get('/sources/:id/health', async (request, reply) => { const id = idParam(request); if (!id) return reply.code(400).send({ error: 'Invalid source id', code: 'INVALID_INPUT' }); if (!getSourceById(options.db, id)) return reply.code(404).send({ error: 'Source not found', code: 'NOT_FOUND' }); return { items: options.db.prepare('SELECT status, latency_ms latencyMs, error_code errorCode, error_message errorMessage, checked_at checkedAt FROM health_checks WHERE source_id = ? ORDER BY checked_at DESC, id DESC LIMIT 30').all(id) }; });
   app.post('/health/check', async () => options.scheduler.runNow());
   const importCounts = (entries: Array<{ sourceKey: string }>) => {

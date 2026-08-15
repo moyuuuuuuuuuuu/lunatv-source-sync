@@ -183,6 +183,22 @@ export function deleteUnhealthySources(db: Database.Database): number {
   return db.prepare("DELETE FROM sources WHERE health_status = 'unhealthy'").run().changes;
 }
 
+export function deleteDuplicateApiSources(db: Database.Database): { affected: number; groups: number } {
+  const rows = db.prepare('SELECT id, api FROM sources ORDER BY id').all() as Array<{ id: number; api: string }>;
+  const keep = new Map<string, number>();
+  const duplicateIds: number[] = [];
+  let groups = 0;
+  const counted = new Set<string>();
+  for (const row of rows) {
+    let normalized: string;
+    try { normalized = normalizeSourceApi(row.api); } catch { normalized = row.api.trim(); }
+    if (!keep.has(normalized)) { keep.set(normalized, row.id); continue; }
+    duplicateIds.push(row.id);
+    if (!counted.has(normalized)) { counted.add(normalized); groups += 1; }
+  }
+  return { affected: deleteSources(db, duplicateIds), groups };
+}
+
 export function deleteSource(db: Database.Database, id: number): boolean {
   return deleteSources(db, [id]) === 1;
 }

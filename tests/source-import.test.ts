@@ -7,6 +7,7 @@ import {
   bulkSetEnabled,
   createSource,
   deleteSources,
+  deleteDuplicateApiSources,
   getSourceByKey,
   listSources,
   updateSource,
@@ -100,6 +101,15 @@ describe('source import and repository', () => {
     expect(applyImport(db, payload, 'overwrite')).toEqual({ inserted: 0, updated: 1, skipped: 0 });
     expect(getSourceByKey(db, 'original')).toMatchObject({ id: original.id, name: 'Replacement' });
     expect(getSourceByKey(db, 'replacement')).toBeNull();
+  });
+
+  test('detects and removes normalized duplicate API groups', () => {
+    const kept = createSource(db, { sourceKey: 'kept', name: 'Kept', api: 'https://same.example/api/' });
+    createSource(db, { sourceKey: 'duplicate', name: 'Duplicate', api: 'https://same.example/api' });
+    createSource(db, { sourceKey: 'unique', name: 'Unique', api: 'https://unique.example/api' });
+    expect(deleteDuplicateApiSources(db)).toEqual({ affected: 1, groups: 1 });
+    expect(getSourceByKey(db, 'kept')?.id).toBe(kept.id);
+    expect(listSources(db).total).toBe(2);
   });
 
   test('supports filtering, updates, bulk enable changes, and transactional deletes', () => {
