@@ -101,9 +101,13 @@ describe('source import and repository', () => {
       sourceKey: 'second', name: 'Second', api: 'https://two.example/api',
       classificationMode: 'adult', enabled: false,
     });
+    db.prepare('UPDATE sources SET latency_ms = ? WHERE id = ?').run(900, first.id);
+    db.prepare('UPDATE sources SET latency_ms = ? WHERE id = ?').run(120, second.id);
 
     expect(listSources(db, { search: 'cinema', classification: 'normal' }).items)
       .toHaveLength(1);
+    expect(listSources(db, { sort: 'latencyAsc' }).items.map((source) => source.id)).toEqual([second.id, first.id]);
+    expect(listSources(db, { sort: 'latencyDesc' }).items.map((source) => source.id)).toEqual([first.id, second.id]);
     expect(updateSource(db, first.id, { name: 'Renamed', ignoreHealthCheck: true }))
       .toMatchObject({ name: 'Renamed', ignoreHealthCheck: true });
     expect(bulkSetEnabled(db, [first.id, second.id], true)).toBe(2);

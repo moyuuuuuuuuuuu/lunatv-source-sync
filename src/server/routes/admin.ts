@@ -61,12 +61,13 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
   });
   app.get('/sources', async (request, reply) => {
     const q = request.query as Record<string, unknown>;
-    if (Object.keys(q).some((key) => !['search', 'classification', 'healthStatus', 'enabled', 'page', 'pageSize'].includes(key))) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
+    if (Object.keys(q).some((key) => !['search', 'classification', 'healthStatus', 'enabled', 'page', 'pageSize', 'sort'].includes(key))) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
     const classification = typeof q.classification === 'string' && ['adult', 'normal'].includes(q.classification) ? q.classification as 'adult' | 'normal' : undefined;
     const healthStatus = typeof q.healthStatus === 'string' && ['unknown', 'healthy', 'unhealthy'].includes(q.healthStatus) ? q.healthStatus as HealthStatus : undefined;
+    const sort = typeof q.sort === 'string' && ['latencyAsc', 'latencyDesc'].includes(q.sort) ? q.sort as 'latencyAsc' | 'latencyDesc' : undefined;
     const page = queryInteger(q.page, 1, 1_000_000); const pageSize = queryInteger(q.pageSize, 50, 200);
-    if (q.search !== undefined && typeof q.search !== 'string' || q.classification !== undefined && !classification || q.healthStatus !== undefined && !healthStatus || q.enabled !== undefined && !['true', 'false'].includes(String(q.enabled)) || page === null || pageSize === null) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
-    return listSources(options.db, { search: q.search as string | undefined, classification, healthStatus, enabled: q.enabled === undefined ? undefined : q.enabled === 'true', page, pageSize });
+    if (q.search !== undefined && typeof q.search !== 'string' || q.classification !== undefined && !classification || q.healthStatus !== undefined && !healthStatus || q.enabled !== undefined && !['true', 'false'].includes(String(q.enabled)) || q.sort !== undefined && !sort || page === null || pageSize === null) return reply.code(400).send({ error: 'Invalid filters', code: 'INVALID_INPUT' });
+    return listSources(options.db, { search: q.search as string | undefined, classification, healthStatus, enabled: q.enabled === undefined ? undefined : q.enabled === 'true', page, pageSize, sort });
   });
   app.post('/sources', async (request, reply) => {
     const input = sourceInput(request.body, true); if (!input) return reply.code(400).send({ error: 'Invalid source', code: 'INVALID_SOURCE' });

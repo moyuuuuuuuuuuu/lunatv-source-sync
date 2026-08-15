@@ -165,7 +165,7 @@ describe('management API', () => {
     const id = created.json().id as number;
     expect((await app.inject({ method: 'PUT', url: `/api/admin/sources/${id}`, headers, payload: {} })).statusCode).toBe(400);
     expect((await app.inject({ method: 'PUT', url: `/api/admin/sources/${id}`, headers, payload: { enabled: 'false' } })).statusCode).toBe(400);
-    for (const query of ['page=0', 'page=nope', 'pageSize=201', 'pageSize=-1', 'enabled=1', 'classification=other', 'unknown=subscription-secret']) {
+    for (const query of ['page=0', 'page=nope', 'pageSize=201', 'pageSize=-1', 'enabled=1', 'classification=other', 'sort=fastest', 'unknown=subscription-secret']) {
       const response = await app.inject({ url: `/api/admin/sources?${query}`, headers });
       expect(response.statusCode).toBe(400); expect(response.body).not.toContain('subscription-secret');
     }

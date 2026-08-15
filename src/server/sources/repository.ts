@@ -46,6 +46,7 @@ export interface ListSourceOptions {
   healthStatus?: HealthStatus;
   page?: number;
   pageSize?: number;
+  sort?: 'latencyAsc' | 'latencyDesc';
 }
 
 function mapRow(row: SourceRow): SourceRecord {
@@ -101,7 +102,12 @@ export function listSources(db: Database.Database, options: ListSourceOptions = 
   const page = Math.max(1, Math.trunc(options.page ?? 1));
   const pageSize = Math.min(200, Math.max(1, Math.trunc(options.pageSize ?? 50)));
   const total = (db.prepare(`SELECT count(*) AS count FROM sources ${clause}`).get(params) as { count: number }).count;
-  const rows = db.prepare(`SELECT * FROM sources ${clause} ORDER BY id DESC LIMIT @limit OFFSET @offset`)
+  const orderBy = options.sort === 'latencyAsc'
+    ? 'latency_ms IS NULL ASC, latency_ms ASC, id DESC'
+    : options.sort === 'latencyDesc'
+      ? 'latency_ms IS NULL ASC, latency_ms DESC, id DESC'
+      : 'id DESC';
+  const rows = db.prepare(`SELECT * FROM sources ${clause} ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`)
     .all({ ...params, limit: pageSize, offset: (page - 1) * pageSize }) as SourceRow[];
   return { items: rows.map(mapRow), total, page, pageSize };
 }
