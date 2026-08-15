@@ -9,7 +9,7 @@ interface SubscriptionExamples { normalJson?: string; tokenCanReset?: boolean }
 
 const links = ref<SubscriptionExamples>({});
 const source = ref<SourceType>('normal');
-const format = ref<FormatType>('json');
+const format = ref<FormatType>('base58');
 const copied = ref(false);
 const error = ref('');
 const resetting = ref(false);
@@ -59,7 +59,7 @@ onMounted(load);
       <div>
         <div class="eyebrow">SUBSCRIPTIONS</div>
         <h2>生成订阅地址</h2>
-        <p>选择视频源范围和输出格式，系统会自动生成可复制的订阅地址。</p>
+        <p>选择视频源范围和输出格式，LunaTV 配置订阅请选择 Base58。</p>
       </div>
       <button v-if="links.tokenCanReset" class="ghost danger" :disabled="resetting" @click="showResetConfirm=true">
         {{ resetting ? '重置中…' : '重置令牌' }}
@@ -77,8 +77,8 @@ onMounted(load);
         </label>
         <label>订阅格式
           <select v-model="format">
-            <option value="json">JSON</option>
-            <option value="base58">Base58</option>
+            <option value="base58">Base58（LunaTV）</option>
+            <option value="json">JSON（原始配置）</option>
           </select>
         </label>
       </div>
