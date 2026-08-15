@@ -304,7 +304,7 @@ Run: `npm run build && npm run typecheck`
 
 Expected: server and client builds complete without errors.
 
-- [ ] **Step 5: Commit the management interface**
+- [x] **Step 5: Commit the management interface**
 
 ```bash
 git add index.html src/client vite.config.ts
@@ -325,15 +325,15 @@ git commit -m "feat: add source management dashboard"
 - Consumes: built server/client and environment contract
 - Produces: runnable `linux/amd64` image exposing port 3000 and persisting `/app/data`
 
-- [ ] **Step 1: Add multi-stage Docker build and Compose file**
+- [x] **Step 1: Add multi-stage Docker build and Compose file**
 
 Build dependencies and assets in a Node 22 builder, install production dependencies for the final image, run as a non-root user, expose port 3000, add an HTTP healthcheck, declare `/app/data`, and set Compose platform to `linux/amd64`.
 
-- [ ] **Step 2: Add smoke script**
+- [x] **Step 2: Add smoke script**
 
 The script starts the Compose service with test credentials/token, waits for `/health`, logs in, imports a small fixture through the API, requests normal JSON and Base58 subscriptions, asserts CORS headers, and confirms an invalid source/format is rejected.
 
-- [ ] **Step 3: Document deployment and operation**
+- [x] **Step 3: Document deployment and operation**
 
 Document Synology-compatible directory creation, `.env` setup, `docker compose up -d`, volume backup, login URL, import/overwrite behavior, adult overrides, health scheduling, subscription examples, proxy mode, token rotation, upgrade, and troubleshooting.
 
@@ -352,7 +352,7 @@ git diff --check
 
 Expected: all commands pass and the smoke test reports successful login, import, subscription, Base58, CORS, and validation checks.
 
-- [ ] **Step 5: Commit packaging and documentation**
+- [x] **Step 5: Commit packaging and documentation**
 
 ```bash
 git add Dockerfile docker-compose.yml .dockerignore scripts/smoke-test.sh README.md package.json package-lock.json

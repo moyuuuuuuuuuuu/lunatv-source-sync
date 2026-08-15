@@ -26,6 +26,13 @@ function parsePort(value: string | undefined): number {
   return port;
 }
 
+function parseBoolean(name: string, value: string | undefined): boolean {
+  if (!value) return false;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new Error(`${name} must be true or false`);
+}
+
 export function loadConfig(): AppConfig {
   const subscriptionToken = process.env.SUBSCRIPTION_TOKEN?.trim();
 
@@ -40,5 +47,7 @@ export function loadConfig(): AppConfig {
       .split(',')
       .map((keyword) => keyword.trim())
       .filter(Boolean),
+    secureCookies: parseBoolean('SECURE_COOKIES', process.env.SECURE_COOKIES?.trim().toLowerCase()),
+    trustProxy: parseBoolean('TRUST_PROXY', process.env.TRUST_PROXY?.trim().toLowerCase()),
   };
 }

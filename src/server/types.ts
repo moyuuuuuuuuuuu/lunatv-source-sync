@@ -38,4 +38,6 @@ export interface AppConfig {
   port: number;
   databasePath: string;
   adultKeywordsExtra: string[];
+  secureCookies?: boolean;
+  trustProxy?: boolean;
 }

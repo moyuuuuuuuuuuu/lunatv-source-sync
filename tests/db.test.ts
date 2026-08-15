@@ -1,5 +1,24 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { migrate, openDatabase } from '../src/server/db.js';
+import { loadConfig } from '../src/server/config.js';
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe('environment configuration', () => {
+  test('defaults proxy security flags for local HTTP and parses explicit HTTPS settings', () => {
+    vi.stubEnv('ADMIN_USERNAME', 'admin');
+    vi.stubEnv('ADMIN_PASSWORD', 'password');
+    vi.stubEnv('SESSION_SECRET', 'secret');
+    vi.stubEnv('SECURE_COOKIES', '');
+    vi.stubEnv('TRUST_PROXY', '');
+    expect(loadConfig()).toMatchObject({ secureCookies: false, trustProxy: false });
+    vi.stubEnv('SECURE_COOKIES', 'true');
+    vi.stubEnv('TRUST_PROXY', 'TRUE');
+    expect(loadConfig()).toMatchObject({ secureCookies: true, trustProxy: true });
+    vi.stubEnv('TRUST_PROXY', 'yes');
+    expect(() => loadConfig()).toThrow('TRUST_PROXY must be true or false');
+  });
+});
 
 describe('database migrations', () => {
   test('create required tables and default settings', () => {

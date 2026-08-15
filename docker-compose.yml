@@ -1,0 +1,26 @@
+services:
+  lunatv-source-sync:
+    platform: linux/amd64
+    build:
+      context: .
+    image: lunatv-source-sync:local
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      ADMIN_USERNAME: "${ADMIN_USERNAME:?ADMIN_USERNAME is required}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}"
+      SESSION_SECRET: "${SESSION_SECRET:?SESSION_SECRET is required}"
+      SUBSCRIPTION_TOKEN: "${SUBSCRIPTION_TOKEN:-}"
+      DATABASE_PATH: /app/data/app.db
+      ADULT_KEYWORDS_EXTRA: "${ADULT_KEYWORDS_EXTRA:-}"
+      SECURE_COOKIES: "${SECURE_COOKIES:-false}"
+      TRUST_PROXY: "${TRUST_PROXY:-false}"
+    volumes:
+      - "${DATA_DIR:-./data}:/app/data"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s

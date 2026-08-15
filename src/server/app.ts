@@ -14,9 +14,9 @@ export interface BuildAppOptions {
   db: Database.Database; config: AppConfig; secureCookies?: boolean; startHealthScheduler?: boolean; healthOptions?: SchedulerOptions;
 }
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, trustProxy: options.config.trustProxy });
   await app.register(cookie);
-  registerAuthRoutes(app, options);
+  registerAuthRoutes(app, { ...options, secureCookies: options.secureCookies ?? options.config.secureCookies });
   registerPublicRoutes(app, { db: options.db, subscriptionToken: options.config.subscriptionToken });
   const scheduler = startScheduler(options.db, options.healthOptions);
   if (options.startHealthScheduler === false) scheduler.stop();
