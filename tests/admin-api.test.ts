@@ -65,6 +65,36 @@ describe('authentication', () => {
 });
 
 describe('management API', () => {
+  test('previews JSON and Base58 imports fetched through the safe URL client', async () => {
+    const document = { api_site: { remote: { name: 'Remote', api: 'https://example.com/api' } } };
+    const { base58EncodeUtf8 } = await import('../src/server/subscription/base58.js');
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(document)))
+      .mockResolvedValueOnce(new Response(base58EncodeUtf8(JSON.stringify(document))));
+    const resolve = vi.fn(async () => [{ address: '93.184.216.34', family: 4 as const }]);
+    const { app } = await fixture({ importUrlOptions: { fetchImpl, resolve } }); const auth = await login(app);
+    const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
+    for (const url of ['https://feeds.example/source.json?token=secret', 'https://feeds.example/source.txt']) {
+      const response = await app.inject({ method: 'POST', url: '/api/admin/import/url-preview', headers, payload: { url } });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ inserted: 1, updated: 0, invalid: 0, document });
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  test('protects URL import and returns redacted, bounded errors', async () => {
+    const fetchImpl = vi.fn(async () => new Response('not-json-or-base58'));
+    const { app } = await fixture({ importUrlOptions: { fetchImpl, resolve: async () => [{ address: '93.184.216.34', family: 4 }] } });
+    const auth = await login(app); const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
+    expect((await app.inject({ method: 'POST', url: '/api/admin/import/url-preview', payload: { url: 'https://safe.example' } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/admin/import/url-preview', headers: { cookie: auth.cookie }, payload: { url: 'https://safe.example' } })).statusCode).toBe(403);
+    for (const url of ['ftp://example.com/file', 'https://user:secret@example.com/file', 'not-a-url']) {
+      const response = await app.inject({ method: 'POST', url: '/api/admin/import/url-preview', headers, payload: { url } });
+      expect(response.statusCode).toBe(400); expect(response.body).not.toContain(url); expect(response.body).not.toContain('secret');
+    }
+    const malformed = await app.inject({ method: 'POST', url: '/api/admin/import/url-preview', headers, payload: { url: 'https://safe.example/file?token=secret' } });
+    expect(malformed.statusCode).toBe(422); expect(malformed.body).not.toContain('secret');
+  });
   test('supports preview/apply, CRUD, filtering and bulk actions', async () => {
     const { app } = await fixture(); const auth = await login(app);
     const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };

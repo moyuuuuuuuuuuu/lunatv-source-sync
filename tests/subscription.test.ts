@@ -4,10 +4,16 @@ import Fastify from 'fastify';
 import { migrate, openDatabase } from '../src/server/db.js';
 import { registerPublicRoutes } from '../src/server/routes/public.js';
 import { createSource } from '../src/server/sources/repository.js';
-import { base58EncodeUtf8 } from '../src/server/subscription/base58.js';
+import { base58DecodeUtf8, base58EncodeUtf8 } from '../src/server/subscription/base58.js';
 import { buildSubscription } from '../src/server/subscription/service.js';
 
 describe('subscriptions', () => {
+  test('strictly decodes Bitcoin Base58 UTF-8', () => {
+    expect(base58DecodeUtf8('2xuZUfBKa')).toBe('你好');
+    expect(base58DecodeUtf8(base58EncodeUtf8('\0hello'))).toBe('\0hello');
+    expect(() => base58DecodeUtf8('0OIl')).toThrow(/base58/i);
+    expect(() => base58DecodeUtf8('5Q')).toThrow(/utf-8/i);
+  });
   let db: Database.Database;
   beforeEach(() => { db = openDatabase(':memory:'); migrate(db); });
   afterEach(() => db.close());

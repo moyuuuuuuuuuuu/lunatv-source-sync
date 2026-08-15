@@ -4,10 +4,11 @@ import { getSession, SESSION_COOKIE } from '../auth/service.js';
 import { getHealthSettings } from '../health/repository.js';
 import type { SchedulerHandle } from '../health/scheduler.js';
 import { applyImport, previewImport } from '../sources/import.js';
+import { fetchRemoteImport, type ImportUrlOptions } from '../sources/url-import.js';
 import { bulkSetEnabled, createSource, deleteSource, deleteSources, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
 import type { AppConfig, HealthStatus } from '../types.js';
 
-export interface AdminRouteOptions { db: Database.Database; config: AppConfig; scheduler: SchedulerHandle }
+export interface AdminRouteOptions { db: Database.Database; config: AppConfig; scheduler: SchedulerHandle; importUrlOptions?: ImportUrlOptions }
 function positiveInteger(value: unknown, min: number, max: number): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : null;
 }
@@ -93,6 +94,20 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
     return { inserted: entries.length - updated, updated };
   };
   app.post('/import/preview', async (request, reply) => { try { const preview = previewImport(request.body, options.config.adultKeywordsExtra); return { ...preview, ...importCounts(preview.entries), invalid: preview.errors.length }; } catch { return reply.code(422).send({ error: 'api_site must be an object', code: 'INVALID_IMPORT' }); } });
+  app.post('/import/url-preview', async (request, reply) => {
+    const body = request.body as { url?: unknown } | null;
+    if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || typeof body.url !== 'string') return reply.code(400).send({ error: 'Invalid import URL', code: 'INVALID_URL' });
+    let url: URL;
+    try { url = new URL(body.url); } catch { return reply.code(400).send({ error: 'Invalid import URL', code: 'INVALID_URL' }); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return reply.code(400).send({ error: 'Invalid import URL', code: 'INVALID_URL' });
+    try {
+      const document = await fetchRemoteImport(url.toString(), options.importUrlOptions);
+      const preview = previewImport(document, options.config.adultKeywordsExtra);
+      return { ...preview, ...importCounts(preview.entries), invalid: preview.errors.length, document };
+    } catch {
+      return reply.code(422).send({ error: 'Unable to fetch or parse remote import', code: 'INVALID_REMOTE_IMPORT' });
+    }
+  });
   app.post('/import/apply', async (request, reply) => { try { const preview = previewImport(request.body, options.config.adultKeywordsExtra); return { ...applyImport(options.db, preview), invalid: preview.errors.length, errors: preview.errors }; } catch { return reply.code(422).send({ error: 'api_site must be an object', code: 'INVALID_IMPORT' }); } });
   app.get('/settings', async () => getHealthSettings(options.db));
   app.put('/settings', async (request, reply) => {
