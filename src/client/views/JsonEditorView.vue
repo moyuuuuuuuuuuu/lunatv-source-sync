@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { api } from '../api';
 
 interface Preview { inserted:number; updated:number; invalid:number; errors:Array<{sourceKey:string;message:string}> }
@@ -15,12 +15,17 @@ const jsonTemplate = `{
     }
   }
 }`;
-const text = ref(jsonTemplate);
+const DRAFT_KEY = 'lunatv-json-editor-draft';
+function readDraft(){try{return sessionStorage.getItem(DRAFT_KEY)||jsonTemplate}catch{return jsonTemplate}}
+const text = ref(readDraft());
 const policy = ref<'skip'|'overwrite'>('skip');
 const preview = ref<Preview>();
 const document = ref<unknown>();
-const busy = ref(false), error = ref(''), message = ref('');
-watch(text, () => { preview.value=undefined; document.value=undefined; message.value=''; });
+const busy = ref(false), error = ref(''), message = ref(''), draftSaved = ref(true);
+let saveTimer:number|undefined;
+function saveDraft(){if(saveTimer)clearTimeout(saveTimer);try{sessionStorage.setItem(DRAFT_KEY,text.value);draftSaved.value=true}catch{draftSaved.value=false}}
+watch(text, () => { preview.value=undefined; document.value=undefined; message.value='';draftSaved.value=false;if(saveTimer)clearTimeout(saveTimer);saveTimer=window.setTimeout(saveDraft,300); });
+onBeforeUnmount(saveDraft);
 
 async function validate() {
   busy.value=true; error.value=''; message.value=''; preview.value=undefined;
@@ -34,4 +39,4 @@ function formatJson(){try{text.value=JSON.stringify(JSON.parse(text.value),null,
 async function insertTab(event:KeyboardEvent){const input=event.target as HTMLTextAreaElement;const start=input.selectionStart;const end=input.selectionEnd;text.value=`${text.value.slice(0,start)}  ${text.value.slice(end)}`;await nextTick();input.setSelectionRange(start+2,start+2)}
 </script>
 
-<template><section><div class="page-head"><div><div class="eyebrow">JSON EDITOR</div><h1>JSON 编辑器</h1><p>粘贴 LunaTV JSON 配置，校验后批量导入视频源。</p></div></div><div class="panel json-editor"><div class="editor-template"><div><b>LunaTV JSON 模板</b><p><code>api_site</code> 下每个键代表唯一来源；<code>name</code> 和 <code>api</code> 必填，其他字段可选。</p></div><button class="ghost" type="button" @click="useTemplate">使用模板</button></div><div class="editor-field"><div class="editor-field-head"><span><i></i> config.json</span><button type="button" @click="formatJson">格式化 JSON</button></div><label class="sr-only" for="json-config-editor">配置 JSON</label><textarea id="json-config-editor" v-model="text" spellcheck="false" aria-label="LunaTV JSON 配置" @keydown.tab.prevent="insertTab"></textarea><div class="editor-status"><span>JSON</span><span>{{text.split('\n').length}} 行 · {{text.length}} 字符</span></div></div><div class="editor-toolbar"><label>API 地址重复时<select v-model="policy"><option value="skip">跳过，保留已有来源</option><option value="overwrite">覆盖已有来源</option></select></label><div class="actions"><button class="ghost" :disabled="busy" @click="validate">{{busy?'校验中…':'校验并预览'}}</button><button class="primary" :disabled="busy||!preview" @click="apply">批量导入</button></div></div><p v-if="error" class="error" role="alert">{{error}}</p><p v-if="message" class="good" role="status">{{message}}</p><div v-if="preview" class="preview"><b>新增 {{preview.inserted}}</b><b>更新 {{preview.updated}}</b><b :class="{bad:preview.invalid}">无效 {{preview.invalid}}</b></div><ul v-if="preview?.errors.length" class="errors"><li v-for="item in preview.errors" :key="item.sourceKey"><code>{{item.sourceKey||'(空键)'}}</code>：{{item.message}}</li></ul></div></section></template>
+<template><section><div class="page-head"><div><div class="eyebrow">JSON EDITOR</div><h1>JSON 编辑器</h1><p>粘贴 LunaTV JSON 配置，校验后批量导入视频源。</p></div></div><div class="panel json-editor"><div class="editor-template"><div><b>LunaTV JSON 模板</b><p><code>api_site</code> 下每个键代表唯一来源；<code>name</code> 和 <code>api</code> 必填，其他字段可选。</p></div><button class="ghost" type="button" @click="useTemplate">使用模板</button></div><div class="editor-field"><div class="editor-field-head"><span><i></i> config.json</span><button type="button" @click="formatJson">格式化 JSON</button></div><label class="sr-only" for="json-config-editor">配置 JSON</label><textarea id="json-config-editor" v-model="text" spellcheck="false" aria-label="LunaTV JSON 配置" @keydown.tab.prevent="insertTab"></textarea><div class="editor-status"><span>{{draftSaved?'草稿已自动保存':'正在保存草稿…'}}</span><span>JSON · {{text.split('\n').length}} 行 · {{text.length}} 字符</span></div></div><div class="editor-toolbar"><label>API 地址重复时<select v-model="policy"><option value="skip">跳过，保留已有来源</option><option value="overwrite">覆盖已有来源</option></select></label><div class="actions"><button class="ghost" :disabled="busy" @click="validate">{{busy?'校验中…':'校验并预览'}}</button><button class="primary" :disabled="busy||!preview" @click="apply">批量导入</button></div></div><p v-if="error" class="error" role="alert">{{error}}</p><p v-if="message" class="good" role="status">{{message}}</p><div v-if="preview" class="preview"><b>新增 {{preview.inserted}}</b><b>更新 {{preview.updated}}</b><b :class="{bad:preview.invalid}">无效 {{preview.invalid}}</b></div><ul v-if="preview?.errors.length" class="errors"><li v-for="item in preview.errors" :key="item.sourceKey"><code>{{item.sourceKey||'(空键)'}}</code>：{{item.message}}</li></ul></div></section></template>
