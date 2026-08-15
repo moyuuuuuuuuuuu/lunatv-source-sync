@@ -1,9 +1,95 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'; import { api } from '../api'; import ConfirmDialog from './ConfirmDialog.vue';
-const links=ref<Record<string,string|boolean>>({}),copied=ref(''),error=ref(''),resetting=ref(false),showResetConfirm=ref(false); async function load(){try{links.value=await api.get('/api/admin/subscription-examples')}catch(e){error.value=e instanceof Error?e.message:'载入失败'}} onMounted(load);
-const linkEntries=computed(()=>Object.entries(links.value).filter((entry):entry is [string,string]=>typeof entry[1]==='string'));
-async function copy(key:string,url:string){await navigator.clipboard.writeText(url);copied.value=key;setTimeout(()=>copied.value='',1500)}
-async function resetToken(){resetting.value=true;error.value='';try{await api.send('/api/admin/subscription-token/reset','POST');await load();showResetConfirm.value=false}catch(e){error.value=e instanceof Error?e.message:'重置失败'}finally{resetting.value=false}}
-const labels:Record<string,string>={normalJson:'普通源 · JSON',allBase58:'全部源 · Base58',normalProxy:'普通源 · 代理'};
+import { computed, onMounted, ref } from 'vue';
+import { api } from '../api';
+import ConfirmDialog from './ConfirmDialog.vue';
+
+type SourceType = 'normal' | 'adult' | 'all';
+type FormatType = 'json' | 'base58';
+interface SubscriptionExamples { normalJson?: string; tokenCanReset?: boolean }
+
+const links = ref<SubscriptionExamples>({});
+const source = ref<SourceType>('normal');
+const format = ref<FormatType>('json');
+const copied = ref(false);
+const error = ref('');
+const resetting = ref(false);
+const showResetConfirm = ref(false);
+
+const generatedUrl = computed(() => {
+  if (!links.value.normalJson) return '';
+  const url = new URL(links.value.normalJson);
+  url.searchParams.set('source', source.value);
+  url.searchParams.set('format', format.value);
+  url.searchParams.set('proxy', '0');
+  return url.toString();
+});
+
+async function load() {
+  error.value = '';
+  try { links.value = await api.get<SubscriptionExamples>('/api/admin/subscription-examples'); }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : '载入失败'; }
+}
+
+async function copy() {
+  if (!generatedUrl.value) return;
+  try {
+    await navigator.clipboard.writeText(generatedUrl.value);
+    copied.value = true;
+    setTimeout(() => { copied.value = false; }, 1500);
+  } catch { error.value = '复制失败，请手动选择地址复制。'; }
+}
+
+async function resetToken() {
+  resetting.value = true;
+  error.value = '';
+  try {
+    await api.send('/api/admin/subscription-token/reset', 'POST');
+    await load();
+    showResetConfirm.value = false;
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : '重置失败'; }
+  finally { resetting.value = false; }
+}
+
+onMounted(load);
 </script>
-<template><section class="panel subscriptions"><div class="page-head"><div><div class="eyebrow">SUBSCRIPTIONS</div><h2>订阅地址</h2><p>订阅令牌由系统首次启动时自动生成，以下地址可直接复制使用。</p></div><button v-if="links.tokenCanReset" class="ghost danger" :disabled="resetting" @click="showResetConfirm=true">{{resetting?'重置中…':'重置令牌'}}</button></div><p v-if="error" class="error">{{error}}</p><template v-else><div v-for="[key,url] in linkEntries" :key="key" class="copy-row"><div><b>{{labels[key]}}</b><code>{{url}}</code></div><button class="ghost" @click="copy(key,url)">{{copied===key?'已复制':'复制'}}</button></div></template><ConfirmDialog v-if="showResetConfirm" title="重置订阅令牌" description="重置后，所有使用旧令牌的订阅地址会立即失效，需要重新复制并更新客户端。" confirm-text="重置令牌" :busy="resetting" @cancel="showResetConfirm=false" @confirm="resetToken"/></section></template>
+
+<template>
+  <section class="panel subscriptions">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">SUBSCRIPTIONS</div>
+        <h2>生成订阅地址</h2>
+        <p>选择视频源范围和输出格式，系统会自动生成可复制的订阅地址。</p>
+      </div>
+      <button v-if="links.tokenCanReset" class="ghost danger" :disabled="resetting" @click="showResetConfirm=true">
+        {{ resetting ? '重置中…' : '重置令牌' }}
+      </button>
+    </div>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <div v-if="generatedUrl" class="subscription-builder">
+      <div class="subscription-options">
+        <label>视频源类型
+          <select v-model="source">
+            <option value="normal">普通源</option>
+            <option value="adult">成人源</option>
+            <option value="all">全部源</option>
+          </select>
+        </label>
+        <label>订阅格式
+          <select v-model="format">
+            <option value="json">JSON</option>
+            <option value="base58">Base58</option>
+          </select>
+        </label>
+      </div>
+      <div class="generated-link">
+        <span>生成的订阅地址</span>
+        <div>
+          <code :title="generatedUrl">{{ generatedUrl }}</code>
+          <button class="primary" @click="copy">{{ copied ? '已复制' : '复制地址' }}</button>
+        </div>
+      </div>
+    </div>
+    <ConfirmDialog v-if="showResetConfirm" title="重置订阅令牌" description="重置后，所有使用旧令牌的订阅地址会立即失效，需要重新复制并更新客户端。" confirm-text="重置令牌" :busy="resetting" @cancel="showResetConfirm=false" @confirm="resetToken"/>
+  </section>
+</template>
