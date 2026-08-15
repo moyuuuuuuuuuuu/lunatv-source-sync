@@ -168,7 +168,7 @@ Run: `npm test -- tests/subscription.test.ts tests/proxy.test.ts && npm run type
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit public subscription service**
+- [x] **Step 7: Commit public subscription service**
 
 ```bash
 git add src/server/subscription src/server/proxy src/server/routes/public.ts tests/subscription.test.ts tests/proxy.test.ts
@@ -189,25 +189,25 @@ git commit -m "feat: add subscriptions and controlled CORS proxy"
 - Produces: `runHealthBatch(db): Promise<BatchResult>`
 - Produces: `startScheduler(db): SchedulerHandle`
 
-- [ ] **Step 1: Write failing health-state tests**
+- [x] **Step 1: Write failing health-state tests**
 
 Cover correct `ac=list` query merging, JSON and XML acceptance, malformed/empty response rejection, timeout/retry behavior, consecutive failure increment, success reset, hidden-after-threshold behavior, recovery, ignore-check publishing, and bounded history pruning.
 
-- [ ] **Step 2: Run the test and confirm failure**
+- [x] **Step 2: Run the test and confirm failure**
 
 Run: `npm test -- tests/health.test.ts`
 
 Expected: missing health modules.
 
-- [ ] **Step 3: Implement checker and persistence**
+- [x] **Step 3: Implement checker and persistence**
 
 Use limited concurrency and at most two retries. Store status, latency, checked time, short error code/message, and history; prune history to 30 entries per source in the same transaction.
 
-- [ ] **Step 4: Implement reschedulable global scheduler**
+- [x] **Step 4: Implement reschedulable global scheduler**
 
 Persist `check_interval_hours` and next-run time, prevent overlapping batches, reschedule immediately after setting changes, and expose manual single/bulk/batch triggers that reuse `checkSource`.
 
-- [ ] **Step 5: Run health and regression tests**
+- [x] **Step 5: Run health and regression tests**
 
 Run: `npm test -- tests/health.test.ts && npm test`
 
