@@ -40,6 +40,7 @@ h2 { font-size: 22px }
 .muted, small, p { color: var(--muted) }
 label { display: grid; gap: 7px; font-weight: 650; font-size: 14px; margin-top: 18px }
 input, select { color: var(--ink); border: 1px solid #d9d9d9; border-radius: 6px; padding: 9px 11px; background: var(--control); min-width: 0; transition: border-color .2s, box-shadow .2s }
+input[type="checkbox"] { accent-color: #1677ff }
 input:hover, select:hover { border-color: #4096ff }
 input:focus, select:focus, button:focus-visible { outline: 0; border-color: #1677ff; box-shadow: 0 0 0 2px rgba(5,145,255,.12) }
 .primary, .ghost, .pager button, .bulk button { border: 1px solid transparent; border-radius: 6px; padding: 8px 15px; font-weight: 500; transition: color .15s, background .15s, border-color .15s }
@@ -119,7 +120,12 @@ td b, td code, td small { display: block } td code { margin: 4px 0; color: var(-
 }
 :root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] .ghost,:root[data-theme="dark"] .pager button,:root[data-theme="dark"] .bulk button { border-color: #3a4152 }
 :root[data-theme="dark"] .sidebar nav button.active { color: #8ab4ff; background: #202f4d }
-:root[data-theme="dark"] table th { color: #c9ced9; background: #20242f }:root[data-theme="dark"] tbody tr:hover { background: #1d222d }
+:root[data-theme="dark"] .table-wrap { background: var(--surface); box-shadow: none }
+:root[data-theme="dark"] table th { color: #c9ced9; background: #20242f }:root[data-theme="dark"] th,:root[data-theme="dark"] td { border-bottom-color: #2a3040 }:root[data-theme="dark"] tbody tr:hover { background: #1d222d }
+:root[data-theme="dark"] .status:not(.healthy):not(.unhealthy) { color: #aeb6c7; border-color: #414858; background: #252b38 }
+:root[data-theme="dark"] .status.healthy { color: #73d13d; border-color: #274916; background: #162312 }:root[data-theme="dark"] .status.unhealthy { color: #ff7875; border-color: #58181c; background: #2a1215 }
+:root[data-theme="dark"] input[type="checkbox"] { color-scheme: dark }
+:root[data-theme="dark"] select option { color: var(--ink); background: var(--control) }
 :root[data-theme="dark"] .copy-row { border-color: var(--line) }:root[data-theme="dark"] .copy-row code { color: #9199aa }
 :root[data-theme="dark"] .drop { border-color: #315d92; background: #171e2a }:root[data-theme="dark"] .drop:hover { background: #192638 }
 :root[data-theme="dark"] .upload-button { color: var(--ink); border-color: #3a4152; background: var(--control) }
