@@ -12,7 +12,7 @@ const authenticated = ref(false);
 const page = ref<Page>('dashboard');
 const navigation = [
   { id: 'dashboard' as const, label: '运行概览', icon: '⌁' },
-  { id: 'sources' as const, label: '来源管理', icon: '◫' },
+  { id: 'sources' as const, label: '视频源管理', icon: '◫' },
   { id: 'settings' as const, label: '系统设置', icon: '⚙' },
 ];
 
