@@ -14,6 +14,11 @@ interface DohResponse {
   Answer?: Array<{ type?: number; data?: string }>;
 }
 
+async function fetchDoh(url: URL, init: RequestInit, fetchImpl: DohFetch): Promise<Response> {
+  if (fetchImpl !== fetch || !configuredProxy() || !proxyResolvesHostname()) return fetchImpl(url, init);
+  return pinnedFetch(url, init, { address: '1.1.1.1', family: 4 });
+}
+
 function supportedAddresses(addresses: readonly { address: string; family: number }[]): readonly { address: string; family: number }[] {
   // The target deployment is commonly a NAS/container without an IPv6 route.
   // On affected Node 22 builds an IPv6 TLS connect can emit EADDRNOTAVAIL on
@@ -30,10 +35,10 @@ async function resolveWithDoh(hostname: string, fetchImpl: DohFetch): Promise<re
       const url = new URL('https://cloudflare-dns.com/dns-query');
       url.searchParams.set('name', hostname);
       url.searchParams.set('type', String(type));
-      const response = await fetchImpl(url, {
+      const response = await fetchDoh(url, {
         headers: { accept: 'application/dns-json' },
         signal: controller.signal,
-      });
+      }, fetchImpl);
       if (!response.ok) return [];
       const body = await response.json() as DohResponse;
       if (body.Status !== 0) return [];

@@ -36,6 +36,16 @@ describe('controlled proxy', () => {
     ]);
   });
 
+  test('rejects blocked DNS answers when public resolution is unavailable', async () => {
+    const lookup = vi.fn(async () => [
+      { address: '0.0.0.0', family: 4 as const },
+      { address: '::', family: 6 as const },
+    ]) as unknown as typeof import('node:dns/promises').lookup;
+    const failedDoh = vi.fn(async () => { throw new Error('DoH unavailable'); });
+    await expect(assertSafeUrl(new URL('https://blocked.example'), (hostname) => resolvePublicHost(hostname, lookup, failedDoh)))
+      .rejects.toThrow(/unsafe|private/i);
+  });
+
   test('rejects unsafe protocols and private, loopback, link-local, and metadata addresses', async () => {
     const resolve = vi.fn(async (host: string) => [{ address: host === 'safe.example' ? '93.184.216.34' : host, family: 4 as const }]);
     await expect(assertSafeUrl(new URL('ftp://safe.example'), resolve)).rejects.toThrow(/protocol/i);
