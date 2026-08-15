@@ -33,6 +33,7 @@ button:disabled { cursor: wait; opacity: .55 }
 .login { padding: 28px; background: radial-gradient(circle at 15% 15%, rgba(22,119,255,.18), transparent 28%), #001529 }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow) }
 .login-card { width: min(450px, 100%); padding: 46px; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 28px 90px rgba(0,0,0,.3) }
+.login-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 28px }.login-brand img { width: 46px; height: 46px }.login-brand b,.login-brand small { display: block }.login-brand b { font-size: 18px }.login-brand small { margin-top: 2px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase }
 .eyebrow { color: var(--green); font-size: 11px; letter-spacing: .17em; font-weight: 800 }
 h1, h2 { margin: .22em 0; letter-spacing: -.035em }
 h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.1 }
@@ -58,6 +59,7 @@ input:focus, select:focus, button:focus-visible { outline: 0; border-color: #167
 .sidebar { position: fixed; inset: 0 auto 0 0; width: 244px; padding: 22px 14px 18px; color: var(--ink); background: var(--sidebar); display: flex; flex-direction: column; z-index: 10; border-right: 1px solid var(--line) }
 .logo { display: flex; align-items: center; gap: 11px; color: inherit; background: none; border: 0; text-align: left; padding: 0 8px }
 .logo-mark { width: 38px; height: 38px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: linear-gradient(145deg,#ff5fa2,#7357ff 58%,#32d6b2); color: #fff; font-weight: 800; font-size: 20px; box-shadow: 0 4px 12px rgba(115,87,255,.22) }
+.logo-mark img { display: block; width: 100%; height: 100%; border-radius: inherit }
 .logo b, .logo small { display: block }.logo b { font-size: 18px }.logo small { color: #839890; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px }
 .sidebar nav { display: grid; gap: 7px; margin-top: 46px }
 .sidebar nav button { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; border-radius: 6px; padding: 11px 14px; color: var(--text-soft); background: transparent; text-align: left; font-weight: 500 }

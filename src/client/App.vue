@@ -61,7 +61,7 @@ function passwordChanged() { showPassword.value = false; authenticated.value = f
   <div v-else class="app-layout">
     <aside class="sidebar">
       <button class="logo" aria-label="返回概览" @click="page = 'dashboard'">
-        <span class="logo-mark">L</span>
+        <span class="logo-mark"><img src="/icon.svg" alt=""></span>
         <span><b>LunaTV</b><small>Source Console</small></span>
       </button>
       <nav aria-label="主导航">

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LunaTV Source Sync">
+  <defs><linearGradient id="bg" x1="8" y1="5" x2="56" y2="59" gradientUnits="userSpaceOnUse"><stop stop-color="#7357ff"/><stop offset=".52" stop-color="#3478f6"/><stop offset="1" stop-color="#25c7a2"/></linearGradient></defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <path d="M42.5 13.5a22 22 0 1 0 8 37.1A20.5 20.5 0 0 1 42.5 13.5Z" fill="#fff" opacity=".96"/>
+  <path d="m28 23 17 10-17 10V23Z" fill="#3478f6"/>
+  <circle cx="49" cy="17" r="4" fill="#7ff0cf"/>
+  <path d="M45 51a20 20 0 0 0 8-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</svg>
