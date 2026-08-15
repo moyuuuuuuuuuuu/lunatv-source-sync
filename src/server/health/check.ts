@@ -65,6 +65,10 @@ export async function checkSource(
     try {
       const result = await proxyRequest({
         upstream: source.api, query: { ac: 'list' }, timeoutMs: settings.requestTimeoutMs,
+        requestHeaders: {
+          accept: 'application/json, application/xml, text/xml, */*',
+          'user-agent': 'LunaTV-Source-Sync/0.1 HealthCheck',
+        },
         maxResponseBytes: 2 * 1024 * 1024, fetchImpl: options.fetchImpl, resolve: options.resolve,
       });
       if (result.status < 200 || result.status >= 300) throw new Error(`HTTP ${result.status}: ${responseExcerpt(result.body)}`);

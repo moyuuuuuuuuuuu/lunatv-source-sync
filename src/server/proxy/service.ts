@@ -102,6 +102,22 @@ function pinnedFetch(url: URL, init: RequestInit, target: { address: string; fam
   });
 }
 
+async function pinnedFetchWithFallback(
+  url: URL,
+  init: RequestInit,
+  addresses: readonly { address: string; family: number }[],
+): Promise<Response> {
+  let lastError: unknown;
+  for (const target of addresses) {
+    try { return await pinnedFetch(url, init, target); }
+    catch (error) {
+      if (init.signal?.aborted) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error('No upstream address available');
+}
+
 export interface ProxyRequestOptions {
   upstream: string;
   query: Record<string, string | string[] | undefined>;
@@ -163,7 +179,7 @@ export async function proxyRequest(options: ProxyRequestOptions): Promise<ProxyR
         const init = { headers, redirect: 'manual' as const, signal: controller.signal };
         response = options.fetchImpl
           ? await fetchImpl(url, init)
-          : await pinnedFetch(url, init, addresses[0]);
+          : await pinnedFetchWithFallback(url, init, addresses);
       } catch (error) {
         if (controller.signal.aborted) throw new ProxyTimeoutError();
         throw error;

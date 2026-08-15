@@ -14,9 +14,13 @@ describe('source health checking', () => {
   test('merges ac=list and accepts basic JSON and XML structures', async () => {
     const db = database();
     const source = createSource(db, { sourceKey: 'one', name: 'One', api: 'https://example.com/api?token=x&ac=detail' });
-    const fetchImpl = vi.fn(async (_url: URL | RequestInfo) => new Response('{"list":[]}', { headers: { 'content-type': 'application/json' } }));
+    const fetchImpl = vi.fn(async (_url: URL | RequestInfo, _init?: RequestInit) => new Response('{"list":[]}', { headers: { 'content-type': 'application/json' } }));
     expect((await checkSource(source, getHealthSettings(db), { fetchImpl, resolve })).status).toBe('healthy');
     expect(fetchImpl.mock.calls[0][0].toString()).toBe('https://example.com/api?token=x&ac=list');
+    expect(fetchImpl.mock.calls[0][1]?.headers).toMatchObject({
+      accept: 'application/json, application/xml, text/xml, */*',
+      'user-agent': 'LunaTV-Source-Sync/0.1 HealthCheck',
+    });
     expect(await checkSource(source, getHealthSettings(db), {
       fetchImpl: async () => new Response('<?xml version="1.0"?><rss><list/></rss>'), resolve,
     })).toMatchObject({ status: 'healthy', attempts: 1 });
