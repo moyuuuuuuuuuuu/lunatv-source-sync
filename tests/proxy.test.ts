@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import Fastify from 'fastify';
+import http from 'node:http';
 import { migrate, openDatabase } from '../src/server/db.js';
 import { assertSafeUrl, proxyRequest, resolvePublicHost } from '../src/server/proxy/service.js';
 import { registerPublicRoutes } from '../src/server/routes/public.js';
@@ -73,6 +74,38 @@ describe('controlled proxy', () => {
     await expect(proxyRequest({ upstream: 'https://safe.example', query: {}, resolve, timeoutMs: 5,
       fetchImpl: (_url, init) => new Promise((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))) }))
       .rejects.toThrow(/timed out/i);
+  });
+
+  test('tunnels default network requests through the configured host proxy', async () => {
+    let tunneledRequest = '';
+    const proxy = http.createServer();
+    proxy.on('connect', (request, socket) => {
+      expect(request.url).toBe('93.184.216.34:80');
+      socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+      socket.once('data', (data) => {
+        tunneledRequest = data.toString();
+        const body = '{"list":[]}';
+        socket.end(`HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n${body}`);
+      });
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
+    const address = proxy.address();
+    if (!address || typeof address === 'string') throw new Error('Proxy did not listen');
+    const previous = process.env.OUTBOUND_PROXY_URL;
+    process.env.OUTBOUND_PROXY_URL = `http://127.0.0.1:${address.port}`;
+    try {
+      const result = await proxyRequest({
+        upstream: 'http://up.example/api', query: { ac: 'list' },
+        resolve: async () => [{ address: '93.184.216.34', family: 4 }],
+      });
+      expect(new TextDecoder().decode(result.body)).toBe('{"list":[]}');
+      expect(tunneledRequest).toContain('GET /api?ac=list HTTP/1.1');
+      expect(tunneledRequest.toLowerCase()).toContain('host: up.example');
+    } finally {
+      if (previous === undefined) delete process.env.OUTBOUND_PROXY_URL;
+      else process.env.OUTBOUND_PROXY_URL = previous;
+      await new Promise<void>((resolve, reject) => proxy.close((error) => error ? reject(error) : resolve()));
+    }
   });
 
   test('route only proxies registered enabled sources and adds CORS', async () => {

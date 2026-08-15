@@ -56,6 +56,14 @@ TRUST_PROXY=true
 
 `SECURE_COOKIES=true` 使登录 Cookie 只经 HTTPS 发送；`TRUST_PROXY=true` 信任反向代理传入的协议和客户端地址。不要在服务可被不可信代理直连时开启 `TRUST_PROXY`。本机或局域网纯 HTTP 应保持两项为 `false`（默认值），否则浏览器不会回传登录 Cookie。
 
+第三方来源无法从 NAS 直连时，可让健康检查、远程 URL 导入和受控来源代理统一使用宿主机上的 HTTP CONNECT 代理。例如宿主机代理监听 `7890` 端口时，在 `.env` 中设置：
+
+```dotenv
+OUTBOUND_PROXY_URL=http://host.docker.internal:7890
+```
+
+Compose 已将 `host.docker.internal` 映射到宿主机网关。代理服务必须允许来自 Docker 网桥的连接；修改后需要重建容器。未配置时所有请求保持直连。目标地址即使通过代理访问，也会先执行协议、DNS/IP、重定向和 SSRF 安全校验。
+
 ## 导入、分类与覆盖
 
 管理页面接受 LunaTV `api_site` 对象。既可以选择本地 JSON 文件，也可以输入 HTTP(S) URL；URL 返回内容会自动识别为 JSON 或 Bitcoin Base58 编码的 JSON。远程拉取会拒绝私网、回环、链路本地和元数据地址，并限制重定向、超时与响应大小。导入预览会逐项报告错误；确认导入后，以来源 key 为唯一键：同 key 更新名称、API、备注和分类，但保留当前健康状态与历史记录。上传原文件和远程原文都不会持久保存。

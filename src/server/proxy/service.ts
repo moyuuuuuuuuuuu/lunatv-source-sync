@@ -1,6 +1,7 @@
 import { lookup } from 'node:dns/promises';
 import http from 'node:http';
 import https from 'node:https';
+import tls from 'node:tls';
 import { Readable } from 'node:stream';
 import { isUnsafeAddress } from './safety.js';
 
@@ -84,19 +85,76 @@ export class ProxyTimeoutError extends Error {
   constructor() { super('Upstream request timed out'); this.name = 'ProxyTimeoutError'; }
 }
 
+function configuredProxy(): URL | null {
+  const value = process.env.OUTBOUND_PROXY_URL?.trim();
+  if (!value) return null;
+  const proxy = new URL(value);
+  if (proxy.protocol !== 'http:' || (proxy.pathname !== '/' && proxy.pathname !== '') || proxy.search || proxy.hash) {
+    throw new Error('OUTBOUND_PROXY_URL must be an http:// proxy URL without a path');
+  }
+  return proxy;
+}
+
+function proxyAuthorization(proxy: URL): string | undefined {
+  if (!proxy.username && !proxy.password) return undefined;
+  return `Basic ${Buffer.from(`${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`).toString('base64')}`;
+}
+
+function tunnelAgent(url: URL, target: { address: string; family: number }, proxy: URL): http.Agent | https.Agent {
+  const agent = url.protocol === 'https:' ? new https.Agent({ keepAlive: false }) : new http.Agent({ keepAlive: false });
+  const createConnection = (_options: object, callback: (error: Error | null, socket?: import('node:net').Socket) => void) => {
+    let settled = false;
+    const finish = (error: Error | null, socket?: import('node:net').Socket) => {
+      if (settled) { if (error) socket?.destroy(); return; }
+      settled = true;
+      callback(error, socket);
+    };
+    const destinationPort = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+    const authority = `${target.address}:${destinationPort}`;
+    const authorization = proxyAuthorization(proxy);
+    const request = http.request({
+      hostname: proxy.hostname,
+      port: Number(proxy.port || 80),
+      method: 'CONNECT',
+      path: authority,
+      headers: { host: authority, ...(authorization ? { 'proxy-authorization': authorization } : {}) },
+    });
+    request.once('connect', (response, socket, head) => {
+      if (response.statusCode !== 200) {
+        socket.destroy();
+        finish(new Error(`Outbound proxy CONNECT failed with status ${response.statusCode ?? 502}`));
+        return;
+      }
+      if (head.length) socket.unshift(head);
+      if (url.protocol === 'http:') { finish(null, socket); return; }
+      const secureSocket = tls.connect({ socket, servername: url.hostname });
+      secureSocket.once('secureConnect', () => finish(null, secureSocket));
+      secureSocket.once('error', (error) => finish(error));
+    });
+    request.once('error', (error) => finish(error));
+    request.end();
+    return undefined;
+  };
+  agent.createConnection = createConnection as typeof agent.createConnection;
+  return agent;
+}
+
 function pinnedFetch(url: URL, init: RequestInit, target: { address: string; family: number }): Promise<Response> {
   return new Promise((resolve, reject) => {
     const transport = url.protocol === 'https:' ? https : http;
+    const proxy = configuredProxy();
     const request = transport.request(url, {
       method: init.method ?? 'GET', headers: init.headers as http.OutgoingHttpHeaders,
-      family: target.family,
-      lookup: ((_hostname: string, lookupOptions: object, callback: (...args: unknown[]) => void) => {
-        if ('all' in lookupOptions && lookupOptions.all) {
-          callback(null, [{ address: target.address, family: target.family }]);
-        } else {
-          callback(null, target.address, target.family);
-        }
-      }) as typeof import('node:dns').lookup,
+      ...(proxy ? { agent: tunnelAgent(url, target, proxy) } : {
+        family: target.family,
+        lookup: ((_hostname: string, lookupOptions: object, callback: (...args: unknown[]) => void) => {
+          if ('all' in lookupOptions && lookupOptions.all) {
+            callback(null, [{ address: target.address, family: target.family }]);
+          } else {
+            callback(null, target.address, target.family);
+          }
+        }) as typeof import('node:dns').lookup,
+      }),
       signal: init.signal ?? undefined,
       ...(url.protocol === 'https:' ? { servername: url.hostname } : {}),
     }, (incoming) => {

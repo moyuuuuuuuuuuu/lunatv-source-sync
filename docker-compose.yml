@@ -15,6 +15,9 @@ services:
       ADULT_KEYWORDS_EXTRA: "${ADULT_KEYWORDS_EXTRA:-}"
       SECURE_COOKIES: "${SECURE_COOKIES:-false}"
       TRUST_PROXY: "${TRUST_PROXY:-false}"
+      OUTBOUND_PROXY_URL: "${OUTBOUND_PROXY_URL:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - "${DATA_DIR:-./data}:/app/data"
     healthcheck:
