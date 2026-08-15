@@ -116,7 +116,7 @@ describe('management API', () => {
     expect(malformed.statusCode).toBe(422); expect(malformed.body).not.toContain('secret');
   });
   test('supports preview/apply, CRUD, filtering and bulk actions', async () => {
-    const { app } = await fixture(); const auth = await login(app);
+    const { app, db } = await fixture(); const auth = await login(app);
     const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
     const payload = { api_site: { one: { name: 'One', api: 'https://example.com/api' }, broken: { name: '' } } };
     const preview = await app.inject({ method: 'POST', url: '/api/admin/import/preview', headers, payload });
@@ -130,6 +130,10 @@ describe('management API', () => {
     expect((await app.inject({ url: '/api/admin/sources?classification=adult', headers })).json()).toMatchObject({ total: 1 });
     expect((await app.inject({ method: 'PUT', url: `/api/admin/sources/${id}`, headers, payload: { name: 'Changed' } })).json().name).toBe('Changed');
     expect((await app.inject({ method: 'POST', url: '/api/admin/sources/bulk', headers, payload: { ids: [id], action: 'disable' } })).json()).toEqual({ affected: 1 });
+    expect((await app.inject({ method: 'POST', url: '/api/admin/sources/remove-unhealthy', payload: {} })).statusCode).toBe(401);
+    db.prepare("UPDATE sources SET health_status = 'unhealthy' WHERE source_key = 'one'").run();
+    expect((await app.inject({ method: 'POST', url: '/api/admin/sources/remove-unhealthy', headers })).json()).toEqual({ affected: 1 });
+    expect((await app.inject({ url: '/api/admin/sources?healthStatus=unhealthy', headers })).json()).toMatchObject({ total: 0 });
     expect((await app.inject({ method: 'DELETE', url: `/api/admin/sources/${id}`, headers })).statusCode).toBe(204);
   });
 

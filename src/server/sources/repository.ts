@@ -158,6 +158,10 @@ export function deleteSources(db: Database.Database, ids: readonly number[]): nu
   ))(ids);
 }
 
+export function deleteUnhealthySources(db: Database.Database): number {
+  return db.prepare("DELETE FROM sources WHERE health_status = 'unhealthy'").run().changes;
+}
+
 export function deleteSource(db: Database.Database, id: number): boolean {
   return deleteSources(db, [id]) === 1;
 }

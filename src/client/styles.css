@@ -41,6 +41,8 @@ input:focus, select:focus, button:focus-visible { outline: 0; border-color: #55a
 .primary:hover { background: var(--green-dark); transform: translateY(-1px) }
 .ghost, .pager button, .bulk button { background: #fff; border-color: var(--line); color: var(--ink) }
 .ghost:hover, .pager button:hover:not(:disabled), .bulk button:hover { border-color: #9eb8ad; background: #f8fbf9 }
+.danger-button { color: var(--red); border-color: #efcccc }
+.danger-button:hover:not(:disabled) { color: #a62f2f; border-color: #d98989; background: #fff5f5 }
 .login .primary { width: 100%; margin-top: 26px; padding: 12px }
 .error, .bad, .danger { color: var(--red)!important }
 .good { color: var(--green)!important }
