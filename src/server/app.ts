@@ -22,13 +22,16 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     trustProxy: options.config.trustProxy,
     bodyLimit: 6 * 1024 * 1024,
   });
-  app.addHook('onRequest', async (request) => {
-    // Browsers and reverse proxies may add Content-Length: 0 to bodyless POSTs.
-    // Fastify otherwise tries to select a body parser and rejects the request
-    // with FST_ERR_CTP_INVALID_MEDIA_TYPE when Content-Type is absent.
-    if (request.headers['content-length'] === '0' && !request.headers['content-type'] && !request.headers['transfer-encoding']) {
-      delete request.headers['content-length'];
-    }
+  app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (_request, body, done) => {
+    // Fastify treats a request without Content-Type as octet-stream whenever a
+    // proxy/browser adds Content-Length: 0. Accept only the genuinely empty
+    // variant; unknown non-empty bodies must remain unsupported.
+    if (body.length === 0) return done(null, undefined);
+    const error = Object.assign(new Error('Unsupported Media Type'), {
+      statusCode: 415,
+      code: 'FST_ERR_CTP_INVALID_MEDIA_TYPE',
+    });
+    return done(error, undefined);
   });
   await app.register(cookie);
   registerAuthRoutes(app, { ...options, secureCookies: options.secureCookies ?? options.config.secureCookies });
