@@ -7,6 +7,7 @@ import { applyImport, previewImport } from '../sources/import.js';
 import { fetchRemoteImport, type ImportUrlOptions } from '../sources/url-import.js';
 import { bulkSetEnabled, createSource, deleteSource, deleteSources, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
 import type { AppConfig, HealthStatus } from '../types.js';
+import { resetSubscriptionToken } from '../subscription/token.js';
 
 export interface AdminRouteOptions { db: Database.Database; config: AppConfig; scheduler: SchedulerHandle; importUrlOptions?: ImportUrlOptions }
 function positiveInteger(value: unknown, min: number, max: number): number | null {
@@ -123,7 +124,11 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
     options.scheduler.reschedule(); return getHealthSettings(options.db);
   });
   app.get('/subscription-examples', async (request) => {
-    const base = `${request.protocol}://${request.host}/api/source`; const make = (source: string, format: string, proxy: number) => `${base}?ac=list&source=${source}&format=${format}&proxy=${proxy}${options.config.subscriptionToken ? '&token=<SUBSCRIPTION_TOKEN>' : ''}`;
-    return { normalJson: make('normal', 'json', 0), allBase58: make('all', 'base58', 0), normalProxy: make('normal', 'json', 1), tokenRequired: Boolean(options.config.subscriptionToken) };
+    const base = `${request.protocol}://${request.host}/api/source`; const make = (source: string, format: string, proxy: number) => `${base}?ac=list&source=${source}&format=${format}&proxy=${proxy}${options.config.subscriptionToken ? `&token=${encodeURIComponent(options.config.subscriptionToken)}` : ''}`;
+    return { normalJson: make('normal', 'json', 0), allBase58: make('all', 'base58', 0), normalProxy: make('normal', 'json', 1), tokenRequired: true, tokenCanReset: true };
+  });
+  app.post('/subscription-token/reset', async (_request, reply) => {
+    options.config.subscriptionToken = resetSubscriptionToken(options.db);
+    return { reset: true };
   });
 }

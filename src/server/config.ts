@@ -34,13 +34,10 @@ function parseBoolean(name: string, value: string | undefined): boolean {
 }
 
 export function loadConfig(): AppConfig {
-  const subscriptionToken = process.env.SUBSCRIPTION_TOKEN?.trim();
-
   return {
     adminUsername: requiredEnvironment('ADMIN_USERNAME'),
     adminPassword: requiredEnvironment('ADMIN_PASSWORD'),
     sessionSecret: requiredEnvironment('SESSION_SECRET'),
-    subscriptionToken: subscriptionToken || undefined,
     port: parsePort(process.env.PORT?.trim()),
     databasePath: process.env.DATABASE_PATH?.trim() || DEFAULT_DATABASE_PATH,
     adultKeywordsExtra: (process.env.ADULT_KEYWORDS_EXTRA ?? '')

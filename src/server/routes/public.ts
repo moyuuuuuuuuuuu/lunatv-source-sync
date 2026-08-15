@@ -31,10 +31,16 @@ function authorized(query: Record<string, unknown>, token?: string): boolean {
 
 export interface PublicRouteOptions {
   db: Database.Database;
-  subscriptionToken?: string;
+  subscriptionToken?: string | (() => string | undefined);
   fetchImpl?: typeof fetch;
   resolve?: ProxyRequestOptions['resolve'];
   maxProxyResponseBytes?: number;
+}
+
+function subscriptionToken(options: PublicRouteOptions): string | undefined {
+  return typeof options.subscriptionToken === 'function'
+    ? options.subscriptionToken()
+    : options.subscriptionToken;
 }
 
 export function registerPublicRoutes(app: FastifyInstance, options: PublicRouteOptions): void {
@@ -43,7 +49,8 @@ export function registerPublicRoutes(app: FastifyInstance, options: PublicRouteO
 
   app.get('/api/source', async (request, reply) => {
     const query = request.query as Record<string, unknown>;
-    if (!authorized(query, options.subscriptionToken)) return cors(reply).code(401).send({ error: 'Unauthorized' });
+    const token = subscriptionToken(options);
+    if (!authorized(query, token)) return cors(reply).code(401).send({ error: 'Unauthorized' });
     const ac = first(query.ac);
     const source = first(query.source) ?? 'normal';
     const format = first(query.format) ?? 'json';
@@ -59,7 +66,7 @@ export function registerPublicRoutes(app: FastifyInstance, options: PublicRouteO
       source: source as SubscriptionCategory,
       proxy: proxy === '1',
       baseUrl: `${request.protocol}://${request.host}`,
-      token: options.subscriptionToken,
+      token,
     });
     const json = JSON.stringify(config);
     cors(reply);
@@ -69,7 +76,7 @@ export function registerPublicRoutes(app: FastifyInstance, options: PublicRouteO
 
   app.get('/api/proxy/:sourceKey', async (request, reply) => {
     const query = request.query as Record<string, unknown>;
-    if (!authorized(query, options.subscriptionToken)) return cors(reply).code(401).send({ error: 'Unauthorized' });
+    if (!authorized(query, subscriptionToken(options))) return cors(reply).code(401).send({ error: 'Unauthorized' });
     const sourceKey = (request.params as { sourceKey: string }).sourceKey;
     const source = getSourceByKey(options.db, sourceKey);
     if (!source || !source.enabled) return cors(reply).code(404).send({ error: 'Source not found' });

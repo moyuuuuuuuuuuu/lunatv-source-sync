@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { migrate, openDatabase } from '../src/server/db.js';
+import { ensureSubscriptionToken } from '../src/server/subscription/token.js';
 import { loadConfig } from '../src/server/config.js';
 
 afterEach(() => vi.unstubAllEnvs());
@@ -21,6 +22,18 @@ describe('environment configuration', () => {
 });
 
 describe('database migrations', () => {
+  test('generates a stable subscription token and permits an environment override', () => {
+    const db = openDatabase(':memory:');
+    try {
+      migrate(db);
+      const generated = ensureSubscriptionToken(db);
+      expect(generated).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(ensureSubscriptionToken(db)).toBe(generated);
+    } finally {
+      db.close();
+    }
+  });
+
   test('create required tables and default settings', () => {
     const db = openDatabase(':memory:');
 

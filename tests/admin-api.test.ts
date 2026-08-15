@@ -11,7 +11,7 @@ async function fixture(overrides: Partial<Parameters<typeof buildApp>[0]> = {}) 
   databases.push(db);
   const config = overrides.config ?? {
       adminUsername: 'admin', adminPassword: 'correct horse', sessionSecret: 'test-secret',
-      subscriptionToken: 'subscription-secret', port: 3000, databasePath: ':memory:', adultKeywordsExtra: [],
+      port: 3000, databasePath: ':memory:', adultKeywordsExtra: [],
     };
   const app = await buildApp({ ...overrides, db, config, startHealthScheduler: overrides.startHealthScheduler ?? false });
   apps.push(app);
@@ -65,6 +65,26 @@ describe('authentication', () => {
 });
 
 describe('management API', () => {
+  test('generates and resets a managed subscription token while invalidating the old URL', async () => {
+    const config = {
+      adminUsername: 'admin', adminPassword: 'correct horse', sessionSecret: 'test-secret',
+      port: 3000, databasePath: ':memory:', adultKeywordsExtra: [], secureCookies: false, trustProxy: false,
+    };
+    const { app } = await fixture({ config }); const auth = await login(app);
+    const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
+    const before = (await app.inject({ url: '/api/admin/subscription-examples', headers })).json();
+    const oldToken = new URL(before.normalJson).searchParams.get('token');
+    expect(oldToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(before.tokenCanReset).toBe(true);
+    expect((await app.inject(`/api/source?token=${oldToken}`)).statusCode).toBe(200);
+    expect((await app.inject({ method: 'POST', url: '/api/admin/subscription-token/reset', headers })).statusCode).toBe(200);
+    const after = (await app.inject({ url: '/api/admin/subscription-examples', headers })).json();
+    const newToken = new URL(after.normalJson).searchParams.get('token');
+    expect(newToken).not.toBe(oldToken);
+    expect((await app.inject(`/api/source?token=${oldToken}`)).statusCode).toBe(401);
+    expect((await app.inject(`/api/source?token=${newToken}`)).statusCode).toBe(200);
+  });
+
   test('previews JSON and Base58 imports fetched through the safe URL client', async () => {
     const document = { api_site: { remote: { name: 'Remote', api: 'https://example.com/api' } } };
     const { base58EncodeUtf8 } = await import('../src/server/subscription/base58.js');
@@ -137,7 +157,7 @@ describe('management API', () => {
     expect((await app.inject({ method: 'DELETE', url: '/api/admin/sources/999', headers })).json()).toMatchObject({ code: 'NOT_FOUND' });
   });
 
-  test('runs immediate checks, validates settings, reports dashboard/history, and redacts secrets', async () => {
+  test('runs checks, validates settings, reports dashboard/history, and returns usable subscription links', async () => {
     const fetchImpl = vi.fn(async () => new Response('{"list":[]}'));
     const resolve = async () => [{ address: '93.184.216.34', family: 4 }];
     const { app } = await fixture({ healthOptions: { fetchImpl, resolve } }); const auth = await login(app);
@@ -152,7 +172,8 @@ describe('management API', () => {
     const settings = await app.inject({ method: 'PUT', url: '/api/admin/settings', headers, payload: { checkIntervalHours: 12, requestTimeoutMs: 5000, failureThreshold: 2, cacheTime: 3600 } });
     expect(settings.json()).toMatchObject({ checkIntervalHours: 12, requestTimeoutMs: 5000, failureThreshold: 2, cacheTime: 3600 });
     const examples = await app.inject({ url: '/api/admin/subscription-examples', headers: { ...headers, host: 'example.test' } });
-    expect(JSON.stringify(examples.json())).not.toContain('subscription-secret');
+    expect(new URL(examples.json().normalJson).searchParams.get('token')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(examples.json().tokenCanReset).toBe(true);
     expect(JSON.stringify(examples.json())).not.toContain('correct horse');
   });
 });

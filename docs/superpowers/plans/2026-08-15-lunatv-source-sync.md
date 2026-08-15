@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Build only for `linux/amd64`.
-- Keep administrator credentials and subscription token in environment variables only.
+- Keep administrator credentials in environment variables; generate and persist a resettable subscription token.
 - Persist source data, settings, and health history in `/app/data/app.db`.
 - Never expose an arbitrary-URL proxy; proxy only enabled sources stored in SQLite.
 - Publish new and not-yet-checked sources; hide a source after the configured consecutive-failure threshold; restore it after success.
@@ -48,7 +48,7 @@ Define `dev`, `build`, `start`, `test`, and `typecheck` scripts. Install Fastify
 
 - [x] **Step 2: Add repository hygiene and environment example**
 
-Ignore `.env`, `data/`, `uploads/`, `logs/`, `node_modules/`, `dist/`, `coverage/`, `*.db`, `*.db-shm`, and `*.db-wal`. Document `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `SESSION_SECRET`, `SUBSCRIPTION_TOKEN`, `PORT`, `DATABASE_PATH`, and `ADULT_KEYWORDS_EXTRA` in `.env.example` with non-secret examples.
+Ignore `.env`, `data/`, `uploads/`, `logs/`, `node_modules/`, `dist/`, `coverage/`, `*.db`, `*.db-shm`, and `*.db-wal`. Document `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `SESSION_SECRET`, `PORT`, `DATABASE_PATH`, and `ADULT_KEYWORDS_EXTRA` in `.env.example` with non-secret examples.
 
 - [x] **Step 3: Write the failing migration test**
 

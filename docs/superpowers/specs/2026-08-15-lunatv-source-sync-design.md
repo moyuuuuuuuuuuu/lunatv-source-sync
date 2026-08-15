@@ -15,7 +15,7 @@
 - 应用内调度器执行全局周期健康检查
 - 单个 Docker 镜像，仅构建 `linux/amd64`
 
-容器只需挂载 `/app/data`。管理员凭据和订阅令牌来自环境变量，不写入数据库。
+容器只需挂载 `/app/data`。管理员凭据来自环境变量；订阅令牌由系统首次启动时生成并持久化，可在后台重置。
 
 ## 系统组成
 
@@ -105,7 +105,7 @@ GET /api/source?ac=list&source=all&format=base58&proxy=1&token=...
 - `source`：`normal`、`adult`、`all`，默认 `normal`
 - `format`：`json`、`base58`，默认 `json`
 - `proxy`：`0` 或 `1`，默认 `0`
-- `token`：配置 `SUBSCRIPTION_TOKEN` 后必填且必须匹配；未配置时允许匿名访问
+- `token`：始终必填且必须匹配系统生成的当前订阅令牌
 
 订阅仅包含已启用且符合以下任一条件的源：
 
@@ -132,7 +132,7 @@ LunaTV 后续追加的 `ac`、`wd`、`pg`、`ids` 等查询参数由代理转发
 
 - 外部请求不能直接提交目标 URL
 - 只代理数据库内存在且启用的源
-- 配置订阅令牌后，代理使用同一令牌校验
+- 代理使用同一系统订阅令牌校验
 - 只允许 HTTP 和 HTTPS
 - 拒绝回环、链路本地、私有网段及云元数据地址
 - 每次重定向都重新验证目标，阻止重定向绕过
@@ -163,7 +163,6 @@ LunaTV 后续追加的 `ac`、`wd`、`pg`、`ids` 等查询参数由代理转发
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change-me
 SESSION_SECRET=replace-with-random-secret
-SUBSCRIPTION_TOKEN=
 PORT=3000
 ADULT_KEYWORDS_EXTRA=
 ```

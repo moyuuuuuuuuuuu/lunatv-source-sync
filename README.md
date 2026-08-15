@@ -22,7 +22,7 @@ docker compose up -d --build
 openssl rand -hex 32
 ```
 
-`ADMIN_USERNAME`、`ADMIN_PASSWORD`、`SESSION_SECRET` 和 `SUBSCRIPTION_TOKEN` 只通过环境变量提供，不会存入数据库。若 `SUBSCRIPTION_TOKEN` 留空，订阅接口允许匿名访问。
+`ADMIN_USERNAME`、`ADMIN_PASSWORD` 和 `SESSION_SECRET` 只通过环境变量提供，不会存入数据库。订阅 token 由系统在首次启动时自动生成并保存在 SQLite 中，后续重启保持不变；后台展示的订阅地址可直接复制使用，也可以随时通过“重置令牌”轮换。
 
 ## 群晖部署
 
@@ -67,7 +67,7 @@ TRUST_PROXY=true
 
 `source` 仅接受 `normal`、`adult`、`all`，`format` 仅接受 `json`、`base58`。`proxy=1` 会把订阅里的 API 地址改写到 `/api/proxy/:sourceKey`。该代理不能传入任意 URL，只代理数据库中已启用的来源，并拒绝私网、回环、链路本地及元数据地址；它不是通用反向代理。
 
-轮换订阅 token：修改 `.env` 的 `SUBSCRIPTION_TOKEN`，运行 `docker compose up -d --force-recreate`，再同步更新所有 LunaTV 客户端。旧地址会立即失效。轮换 `SESSION_SECRET` 会立即使所有管理会话失效，需要重新登录。
+轮换订阅 token：在管理后台点击“重置令牌”，再同步更新所有 LunaTV 客户端；旧地址会立即失效。轮换 `SESSION_SECRET` 会立即使所有管理会话失效，需要重新登录。
 
 ## 备份与恢复
 
@@ -99,7 +99,7 @@ docker compose ps
 
 - 容器反复退出：检查 `docker compose logs`；确认三个必填变量（管理员用户名、密码、会话密钥）非空、`data` 可由容器内非 root 用户写入、3000 端口未占用。
 - 登录成功后仍显示未登录：纯 HTTP 下确认 `SECURE_COOKIES=false`；HTTPS 反向代理下确认两项代理配置为 `true`，并传递 `X-Forwarded-Proto: https`。
-- 返回 401：管理 API 需要登录会话；订阅/代理需要当前 `SUBSCRIPTION_TOKEN`。修改 token 后客户端旧链接会失效。
+- 返回 401：管理 API 需要登录会话；订阅/代理需要后台当前显示的系统 token。重置 token 后客户端旧链接会失效。
 - 来源没有出现在订阅：检查来源是否启用、分类筛选是否匹配，以及连续失败数是否达到阈值；查看健康历史后可手动重检。
 - 代理返回 502/504：上游不可达、响应过大、超时或解析失败；指向内网及特殊地址的源会被安全策略拒绝。
 - 群晖提示镜像架构不符：本项目只构建 `linux/amd64`，确认 NAS 是 Intel/AMD 架构。

@@ -10,11 +10,13 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { registerPublicRoutes } from './routes/public.js';
 import { startScheduler, type SchedulerOptions } from './health/scheduler.js';
 import type { ImportUrlOptions } from './sources/url-import.js';
+import { ensureSubscriptionToken } from './subscription/token.js';
 
 export interface BuildAppOptions {
   db: Database.Database; config: AppConfig; secureCookies?: boolean; startHealthScheduler?: boolean; healthOptions?: SchedulerOptions; importUrlOptions?: ImportUrlOptions;
 }
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
+  options.config.subscriptionToken = ensureSubscriptionToken(options.db);
   const app = Fastify({
     logger: false,
     trustProxy: options.config.trustProxy,
@@ -22,7 +24,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   });
   await app.register(cookie);
   registerAuthRoutes(app, { ...options, secureCookies: options.secureCookies ?? options.config.secureCookies });
-  registerPublicRoutes(app, { db: options.db, subscriptionToken: options.config.subscriptionToken });
+  registerPublicRoutes(app, { db: options.db, subscriptionToken: () => options.config.subscriptionToken });
   const scheduler = startScheduler(options.db, options.healthOptions);
   if (options.startHealthScheduler === false) scheduler.stop();
   await app.register(async (admin) => registerAdminRoutes(admin, { db: options.db, config: options.config, scheduler, importUrlOptions: options.importUrlOptions }), { prefix: '/api/admin' });

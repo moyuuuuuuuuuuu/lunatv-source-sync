@@ -60,7 +60,8 @@ INSERT OR IGNORE INTO settings (setting_key, setting_value) VALUES
   ('request_timeout_ms', '10000'),
   ('failure_threshold', '3'),
   ('cache_time', '7200'),
-  ('next_check_at', '');
+  ('next_check_at', ''),
+  ('subscription_token', '');
 
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
