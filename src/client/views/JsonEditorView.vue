@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { api } from '../api';
+import { formatJsonPreservingContent } from '../json-format';
 
 interface Preview { inserted:number; updated:number; invalid:number; errors:Array<{sourceKey:string;message:string}> }
 const jsonTemplate = `{
@@ -33,9 +34,9 @@ async function validate() {
   catch(cause){error.value=cause instanceof SyntaxError?`JSON 语法错误：${cause.message}`:cause instanceof Error?cause.message:'JSON 无效'}
   finally{busy.value=false}
 }
-async function apply(){if(!document.value||!preview.value)return;busy.value=true;error.value='';try{const result=await api.send<{inserted:number;updated:number;skipped:number}>('/api/admin/import/apply','POST',{document:document.value,duplicateApiPolicy:policy.value});message.value=`导入完成：新增 ${result.inserted}，更新 ${result.updated}，跳过 ${result.skipped}`;preview.value=undefined;document.value=undefined}catch(cause){error.value=cause instanceof Error?cause.message:'导入失败'}finally{busy.value=false}}
+async function apply(){if(!document.value||!preview.value)return;busy.value=true;error.value='';try{const result=await api.send<{inserted:number;updated:number;skipped:number;invalid:number}>('/api/admin/import/apply','POST',{document:document.value,duplicateApiPolicy:policy.value});const successMessage=`导入完成：新增 ${result.inserted}，更新 ${result.updated}，跳过 ${result.skipped}`;preview.value=undefined;document.value=undefined;if(result.invalid===0&&result.skipped===0){text.value=jsonTemplate;saveDraft();await nextTick()}message.value=successMessage}catch(cause){error.value=cause instanceof Error?cause.message:'导入失败'}finally{busy.value=false}}
 function useTemplate(){text.value=jsonTemplate;error.value=''}
-function formatJson(){try{text.value=JSON.stringify(JSON.parse(text.value),null,2);error.value=''}catch(cause){error.value=cause instanceof Error?`无法格式化：${cause.message}`:'JSON 格式错误'}}
+function formatJson(){try{text.value=formatJsonPreservingContent(text.value);error.value=''}catch(cause){error.value=cause instanceof Error?`无法格式化：${cause.message}`:'JSON 格式错误'}}
 async function insertTab(event:KeyboardEvent){const input=event.target as HTMLTextAreaElement;const start=input.selectionStart;const end=input.selectionEnd;text.value=`${text.value.slice(0,start)}  ${text.value.slice(end)}`;await nextTick();input.setSelectionRange(start+2,start+2)}
 </script>
 
