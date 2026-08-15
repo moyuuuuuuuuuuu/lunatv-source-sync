@@ -7,8 +7,8 @@
     <title>LunaTV 视频源管理</title>
     <script>
       (() => {
-        const saved = localStorage.getItem('lunatv-theme');
-        const theme = saved === 'light' || saved === 'dark' ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const hour = new Date().getHours();
+        const theme = hour >= 6 && hour < 18 ? 'light' : 'dark';
         document.documentElement.dataset.theme = theme;
         document.documentElement.style.colorScheme = theme;
       })();
