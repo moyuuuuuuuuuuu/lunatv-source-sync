@@ -100,14 +100,22 @@ function proxyAuthorization(proxy: URL): string | undefined {
   return `Basic ${Buffer.from(`${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`).toString('base64')}`;
 }
 
-function tunnelAgent(url: URL, target: { address: string; family: number }, proxy: URL): http.Agent | https.Agent {
+function tunnelAgent(url: URL, target: { address: string; family: number }, proxy: URL, signal?: AbortSignal): http.Agent | https.Agent {
   const agent = url.protocol === 'https:' ? new https.Agent({ keepAlive: false }) : new http.Agent({ keepAlive: false });
   const createConnection = (_options: object, callback: (error: Error | null, socket?: import('node:net').Socket) => void) => {
     let settled = false;
+    let activeSocket: import('node:net').Socket | undefined;
     const finish = (error: Error | null, socket?: import('node:net').Socket) => {
-      if (settled) { if (error) socket?.destroy(); return; }
+      if (settled) { socket?.destroy(); return; }
       settled = true;
+      signal?.removeEventListener('abort', abort);
       callback(error, socket);
+    };
+    const abort = () => {
+      const error = new Error('Outbound proxy connection aborted');
+      activeSocket?.destroy(error);
+      request.destroy(error);
+      finish(error);
     };
     const destinationPort = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
     const authority = `${target.address}:${destinationPort}`;
@@ -118,8 +126,10 @@ function tunnelAgent(url: URL, target: { address: string; family: number }, prox
       method: 'CONNECT',
       path: authority,
       headers: { host: authority, ...(authorization ? { 'proxy-authorization': authorization } : {}) },
+      signal,
     });
     request.once('connect', (response, socket, head) => {
+      activeSocket = socket;
       if (response.statusCode !== 200) {
         socket.destroy();
         finish(new Error(`Outbound proxy CONNECT failed with status ${response.statusCode ?? 502}`));
@@ -128,10 +138,13 @@ function tunnelAgent(url: URL, target: { address: string; family: number }, prox
       if (head.length) socket.unshift(head);
       if (url.protocol === 'http:') { finish(null, socket); return; }
       const secureSocket = tls.connect({ socket, servername: url.hostname });
+      activeSocket = secureSocket;
       secureSocket.once('secureConnect', () => finish(null, secureSocket));
       secureSocket.once('error', (error) => finish(error));
     });
     request.once('error', (error) => finish(error));
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) { abort(); return undefined; }
     request.end();
     return undefined;
   };
@@ -145,7 +158,7 @@ function pinnedFetch(url: URL, init: RequestInit, target: { address: string; fam
     const proxy = configuredProxy();
     const request = transport.request(url, {
       method: init.method ?? 'GET', headers: init.headers as http.OutgoingHttpHeaders,
-      ...(proxy ? { agent: tunnelAgent(url, target, proxy) } : {
+      ...(proxy ? { agent: tunnelAgent(url, target, proxy, init.signal ?? undefined) } : {
         family: target.family,
         lookup: ((_hostname: string, lookupOptions: object, callback: (...args: unknown[]) => void) => {
           if ('all' in lookupOptions && lookupOptions.all) {

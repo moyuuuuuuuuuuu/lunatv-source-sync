@@ -108,6 +108,33 @@ describe('controlled proxy', () => {
     }
   });
 
+  test('enforces timeout while the outbound proxy tunnel is pending', async () => {
+    const proxy = http.createServer();
+    const tunnelSockets = new Set<import('node:stream').Duplex>();
+    proxy.on('connect', (_request, socket) => {
+      tunnelSockets.add(socket);
+      socket.once('close', () => tunnelSockets.delete(socket));
+      socket.once('error', () => undefined);
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
+    const address = proxy.address();
+    if (!address || typeof address === 'string') throw new Error('Proxy did not listen');
+    const previous = process.env.OUTBOUND_PROXY_URL;
+    process.env.OUTBOUND_PROXY_URL = `http://127.0.0.1:${address.port}`;
+    try {
+      await expect(proxyRequest({
+        upstream: 'https://up.example/api', query: {}, timeoutMs: 20,
+        resolve: async () => [{ address: '93.184.216.34', family: 4 }],
+      })).rejects.toThrow(/timed out/i);
+    } finally {
+      if (previous === undefined) delete process.env.OUTBOUND_PROXY_URL;
+      else process.env.OUTBOUND_PROXY_URL = previous;
+      for (const socket of tunnelSockets) socket.destroy();
+      proxy.closeAllConnections();
+      await new Promise<void>((resolve, reject) => proxy.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
   test('route only proxies registered enabled sources and adds CORS', async () => {
     const db = openDatabase(':memory:');
     migrate(db);
