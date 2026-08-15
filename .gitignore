@@ -5,6 +5,7 @@ logs/
 node_modules/
 dist/
 coverage/
+.codegraph/
 *.db
 *.db-shm
 *.db-wal

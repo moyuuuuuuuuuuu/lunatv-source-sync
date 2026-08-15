@@ -42,35 +42,35 @@
 - Produces: `migrate(db: Database.Database): void`
 - Produces: shared `SourceRecord`, `Settings`, and `HealthStatus` types
 
-- [ ] **Step 1: Add package scripts and dependencies**
+- [x] **Step 1: Add package scripts and dependencies**
 
 Define `dev`, `build`, `start`, `test`, and `typecheck` scripts. Install Fastify, cookie/static plugins, `better-sqlite3`, Vue, Vite, TypeScript, Vitest, and minimal type packages. Require Node 22.
 
-- [ ] **Step 2: Add repository hygiene and environment example**
+- [x] **Step 2: Add repository hygiene and environment example**
 
 Ignore `.env`, `data/`, `uploads/`, `logs/`, `node_modules/`, `dist/`, `coverage/`, `*.db`, `*.db-shm`, and `*.db-wal`. Document `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `SESSION_SECRET`, `SUBSCRIPTION_TOKEN`, `PORT`, `DATABASE_PATH`, and `ADULT_KEYWORDS_EXTRA` in `.env.example` with non-secret examples.
 
-- [ ] **Step 3: Write the failing migration test**
+- [x] **Step 3: Write the failing migration test**
 
 The test opens an in-memory database, runs `migrate`, and asserts the existence of `sources`, `health_checks`, `settings`, and `sessions`, plus default settings `check_interval_hours=24`, `request_timeout_ms=10000`, `failure_threshold=3`, and `cache_time=7200`.
 
-- [ ] **Step 4: Run the focused test and confirm failure**
+- [x] **Step 4: Run the focused test and confirm failure**
 
 Run: `npm test -- tests/db.test.ts`
 
 Expected: failure because `openDatabase` and `migrate` do not exist.
 
-- [ ] **Step 5: Implement configuration and schema**
+- [x] **Step 5: Implement configuration and schema**
 
 Validate required administrator variables at startup. Create sources with unique `source_key`, LunaTV fields, classification mode/result, enabled/ignore-check flags, current health state, failure count, timestamps, and latency. Create bounded health history, key/value settings, and expiring hashed sessions. Enable WAL, foreign keys, and busy timeout.
 
-- [ ] **Step 6: Run database tests and typecheck**
+- [x] **Step 6: Run database tests and typecheck**
 
 Run: `npm test -- tests/db.test.ts && npm run typecheck`
 
 Expected: all pass.
 
-- [ ] **Step 7: Commit the project foundation**
+- [x] **Step 7: Commit the project foundation**
 
 ```bash
 git add .gitignore .env.example package.json package-lock.json tsconfig.json vite.config.ts src/server/config.ts src/server/db.ts src/server/schema.sql src/server/types.ts tests/db.test.ts
@@ -92,25 +92,25 @@ git commit -m "feat: initialize source sync service"
 - Produces: `applyImport(db, preview): ImportResult`
 - Produces: repository functions for list/get/create/update/delete and bulk state changes
 
-- [ ] **Step 1: Write failing import tests**
+- [x] **Step 1: Write failing import tests**
 
 Cover a valid `api_site`, invalid missing `name`/`api`, automatic adult keywords across key/name/URL/comment, explicit `adult` overrides, same-key overwrite, and retention of existing health history.
 
-- [ ] **Step 2: Run the import tests and confirm failure**
+- [x] **Step 2: Run the import tests and confirm failure**
 
 Run: `npm test -- tests/source-import.test.ts`
 
 Expected: missing module failures.
 
-- [ ] **Step 3: Implement classification and validation**
+- [x] **Step 3: Implement classification and validation**
 
 Normalize case, match a conservative built-in keyword set plus comma-separated environment additions, and model classification as `auto | adult | normal`. Parse only object-shaped `api_site` input, retain allowed LunaTV fields, and return item-level validation errors without writing files.
 
-- [ ] **Step 4: Implement transactional overwrite and repository operations**
+- [x] **Step 4: Implement transactional overwrite and repository operations**
 
 Upsert by `source_key`; overwrite display/API fields and classification while retaining health rows and current health metadata. Implement paginated filtering and explicit transactional bulk updates/deletes.
 
-- [ ] **Step 5: Run focused and full tests**
+- [x] **Step 5: Run focused and full tests**
 
 Run: `npm test -- tests/source-import.test.ts && npm test`
 
