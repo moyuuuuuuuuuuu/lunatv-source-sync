@@ -337,7 +337,7 @@ The script starts the Compose service with test credentials/token, waits for `/h
 
 Document Synology-compatible directory creation, `.env` setup, `docker compose up -d`, volume backup, login URL, import/overwrite behavior, adult overrides, health scheduling, subscription examples, proxy mode, token rotation, upgrade, and troubleshooting.
 
-- [ ] **Step 4: Run final verification**
+- [x] **Step 4: Run final verification**
 
 Run:
 
