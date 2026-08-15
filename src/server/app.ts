@@ -22,6 +22,14 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     trustProxy: options.config.trustProxy,
     bodyLimit: 6 * 1024 * 1024,
   });
+  app.addHook('onRequest', async (request) => {
+    // Browsers and reverse proxies may add Content-Length: 0 to bodyless POSTs.
+    // Fastify otherwise tries to select a body parser and rejects the request
+    // with FST_ERR_CTP_INVALID_MEDIA_TYPE when Content-Type is absent.
+    if (request.headers['content-length'] === '0' && !request.headers['content-type'] && !request.headers['transfer-encoding']) {
+      delete request.headers['content-length'];
+    }
+  });
   await app.register(cookie);
   registerAuthRoutes(app, { ...options, secureCookies: options.secureCookies ?? options.config.secureCookies });
   registerPublicRoutes(app, { db: options.db, subscriptionToken: () => options.config.subscriptionToken });

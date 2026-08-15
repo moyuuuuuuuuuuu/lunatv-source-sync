@@ -177,6 +177,8 @@ describe('management API', () => {
     const resolve = async () => [{ address: '93.184.216.34', family: 4 }];
     const { app } = await fixture({ healthOptions: { fetchImpl, resolve } }); const auth = await login(app);
     const headers = { cookie: auth.cookie, 'x-csrf-token': auth.csrf };
+    const emptyPost = await app.inject({ method: 'POST', url: '/api/admin/health/check', headers: { ...headers, 'content-length': '0' } });
+    expect(emptyPost.statusCode).toBe(200);
     const created = await app.inject({ method: 'POST', url: '/api/admin/sources', headers, payload: { sourceKey: 'one', name: 'One', api: 'https://example.com/api' } });
     const id = created.json().id as number;
     expect((await app.inject({ method: 'POST', url: `/api/admin/sources/${id}/check`, headers })).json()).toMatchObject({ checked: 1, healthy: 1 });
