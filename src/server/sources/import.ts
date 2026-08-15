@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { ClassificationMode } from '../types.js';
 import { classifyAdult } from './classify.js';
+import { getSourceByApi } from './repository.js';
 
 export interface ImportEntry {
   sourceKey: string;
@@ -26,7 +27,9 @@ export interface ImportPreview {
 export interface ImportResult {
   inserted: number;
   updated: number;
+  skipped: number;
 }
+export type DuplicateApiPolicy = 'skip' | 'overwrite';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -93,7 +96,7 @@ export function previewImport(
   return { entries, errors };
 }
 
-export function applyImport(db: Database.Database, preview: ImportPreview): ImportResult {
+export function applyImport(db: Database.Database, preview: ImportPreview, duplicateApiPolicy: DuplicateApiPolicy = 'skip'): ImportResult {
   const exists = db.prepare('SELECT 1 FROM sources WHERE source_key = ?');
   const upsert = db.prepare(`
     INSERT INTO sources (
@@ -114,11 +117,23 @@ export function applyImport(db: Database.Database, preview: ImportPreview): Impo
   return db.transaction((entries: ImportEntry[]) => {
     let inserted = 0;
     let updated = 0;
+    let skipped = 0;
     for (const entry of entries) {
-      if (exists.get(entry.sourceKey)) updated += 1;
-      else inserted += 1;
+      if (exists.get(entry.sourceKey)) {
+        updated += 1;
+        upsert.run({ ...entry, isAdult: Number(entry.isAdult) });
+        continue;
+      }
+      const duplicateApi = getSourceByApi(db, entry.api);
+      if (duplicateApi) {
+        if (duplicateApiPolicy === 'skip') { skipped += 1; continue; }
+        updated += 1;
+        upsert.run({ ...entry, sourceKey: duplicateApi.sourceKey, isAdult: Number(entry.isAdult) });
+        continue;
+      }
+      inserted += 1;
       upsert.run({ ...entry, isAdult: Number(entry.isAdult) });
     }
-    return { inserted, updated };
+    return { inserted, updated, skipped };
   })(preview.entries);
 }

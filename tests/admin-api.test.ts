@@ -138,6 +138,10 @@ describe('management API', () => {
     expect(overwrite.json()).toMatchObject({ inserted: 0, updated: 1, invalid: 1 });
     const created = await app.inject({ method: 'POST', url: '/api/admin/sources', headers, payload: { sourceKey: 'adult', name: 'Adult', api: 'https://example.com/adult', classificationMode: 'adult' } });
     expect(created.statusCode).toBe(201); const id = created.json().id as number;
+    const skippedDuplicate = await app.inject({ method: 'POST', url: '/api/admin/sources', headers, payload: { sourceKey: 'duplicate', name: 'Duplicate', api: 'https://example.com/adult/' } });
+    expect(skippedDuplicate.json()).toMatchObject({ id, sourceKey: 'adult', duplicateAction: 'skipped' });
+    const overwrittenDuplicate = await app.inject({ method: 'POST', url: '/api/admin/sources', headers, payload: { sourceKey: 'replacement', name: 'Overwritten', api: 'https://example.com/adult/', classificationMode: 'adult', duplicateApiPolicy: 'overwrite' } });
+    expect(overwrittenDuplicate.json()).toMatchObject({ id, sourceKey: 'adult', name: 'Overwritten', duplicateAction: 'overwritten' });
     expect((await app.inject({ url: '/api/admin/sources?classification=adult', headers })).json()).toMatchObject({ total: 1 });
     expect((await app.inject({ method: 'PUT', url: `/api/admin/sources/${id}`, headers, payload: { name: 'Changed' } })).json().name).toBe('Changed');
     expect((await app.inject({ method: 'POST', url: '/api/admin/sources/bulk', headers, payload: { ids: [id], action: 'disable' } })).json()).toEqual({ affected: 1 });

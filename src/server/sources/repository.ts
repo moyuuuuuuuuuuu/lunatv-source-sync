@@ -77,6 +77,21 @@ export function getSourceByKey(db: Database.Database, sourceKey: string): Source
   return row ? mapRow(row) : null;
 }
 
+export function normalizeSourceApi(api: string): string {
+  const url = new URL(api.trim());
+  if (url.pathname.length > 1) url.pathname = url.pathname.replace(/\/+$/, '');
+  return url.toString();
+}
+
+export function getSourceByApi(db: Database.Database, api: string): SourceRecord | null {
+  const normalized = normalizeSourceApi(api);
+  const rows = db.prepare('SELECT * FROM sources').all() as SourceRow[];
+  const row = rows.find((candidate) => {
+    try { return normalizeSourceApi(candidate.api) === normalized; } catch { return candidate.api.trim() === api.trim(); }
+  });
+  return row ? mapRow(row) : null;
+}
+
 export function listSources(db: Database.Database, options: ListSourceOptions = {}): {
   items: SourceRecord[]; total: number; page: number; pageSize: number;
 } {

@@ -79,7 +79,7 @@ describe('source import and repository', () => {
       },
     }));
 
-    expect(result).toEqual({ inserted: 1, updated: 1 });
+    expect(result).toEqual({ inserted: 1, updated: 1, skipped: 0 });
     expect(getSourceByKey(db, 'same')).toMatchObject({
       id: original.id,
       name: 'New',
@@ -90,6 +90,16 @@ describe('source import and repository', () => {
     });
     expect(db.prepare('SELECT count(*) AS count FROM health_checks WHERE source_id = ?')
       .get(original.id)).toEqual({ count: 1 });
+  });
+
+  test('skips or overwrites entries with a duplicate normalized API while preserving identity', () => {
+    const original = createSource(db, { sourceKey: 'original', name: 'Original', api: 'https://same.example/api/' });
+    const payload = previewImport({ api_site: { replacement: { name: 'Replacement', api: 'https://same.example/api' } } });
+    expect(applyImport(db, payload, 'skip')).toEqual({ inserted: 0, updated: 0, skipped: 1 });
+    expect(getSourceByKey(db, 'original')).toMatchObject({ id: original.id, name: 'Original' });
+    expect(applyImport(db, payload, 'overwrite')).toEqual({ inserted: 0, updated: 1, skipped: 0 });
+    expect(getSourceByKey(db, 'original')).toMatchObject({ id: original.id, name: 'Replacement' });
+    expect(getSourceByKey(db, 'replacement')).toBeNull();
   });
 
   test('supports filtering, updates, bulk enable changes, and transactional deletes', () => {

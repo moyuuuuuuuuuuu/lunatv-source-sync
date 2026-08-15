@@ -3,9 +3,9 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { adminPasswordMatches, getSession, hashAdminPassword, SESSION_COOKIE } from '../auth/service.js';
 import { getHealthSettings } from '../health/repository.js';
 import type { SchedulerHandle } from '../health/scheduler.js';
-import { applyImport, previewImport } from '../sources/import.js';
+import { applyImport, previewImport, type DuplicateApiPolicy } from '../sources/import.js';
 import { fetchRemoteImport, type ImportUrlOptions } from '../sources/url-import.js';
-import { bulkSetEnabled, createSource, deleteSource, deleteSources, deleteUnhealthySources, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
+import { bulkSetEnabled, createSource, deleteSource, deleteSources, deleteUnhealthySources, getSourceByApi, getSourceById, listSources, updateSource, type CreateSourceInput, type UpdateSourceInput } from '../sources/repository.js';
 import type { AppConfig, HealthStatus } from '../types.js';
 import { resetSubscriptionToken } from '../subscription/token.js';
 
@@ -70,7 +70,17 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
     return listSources(options.db, { search: q.search as string | undefined, classification, healthStatus, enabled: q.enabled === undefined ? undefined : q.enabled === 'true', page, pageSize, sort });
   });
   app.post('/sources', async (request, reply) => {
-    const input = sourceInput(request.body, true); if (!input) return reply.code(400).send({ error: 'Invalid source', code: 'INVALID_SOURCE' });
+    const body = request.body as Record<string, unknown> | null;
+    const duplicateApiPolicy = body?.duplicateApiPolicy;
+    if (duplicateApiPolicy !== undefined && !['skip', 'overwrite'].includes(String(duplicateApiPolicy))) return reply.code(400).send({ error: 'Invalid duplicate API policy', code: 'INVALID_INPUT' });
+    const sourceBody = body && Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'duplicateApiPolicy'));
+    const input = sourceInput(sourceBody, true); if (!input) return reply.code(400).send({ error: 'Invalid source', code: 'INVALID_SOURCE' });
+    const duplicate = getSourceByApi(options.db, input.api);
+    if (duplicate) {
+      if ((duplicateApiPolicy ?? 'skip') === 'skip') return { ...duplicate, duplicateAction: 'skipped' };
+      const overwritten = updateSource(options.db, duplicate.id, { ...input, sourceKey: duplicate.sourceKey, extraKeywords: options.config.adultKeywordsExtra });
+      return { ...overwritten, duplicateAction: 'overwritten' };
+    }
     try { return reply.code(201).send(createSource(options.db, { ...input, extraKeywords: options.config.adultKeywordsExtra })); }
     catch { return reply.code(400).send({ error: 'Invalid or duplicate source', code: 'INVALID_SOURCE' }); }
   });
@@ -111,7 +121,14 @@ export function registerAdminRoutes(app: FastifyInstance, options: AdminRouteOpt
       return reply.code(422).send({ error: 'Unable to fetch or parse remote import', code: 'INVALID_REMOTE_IMPORT' });
     }
   });
-  app.post('/import/apply', async (request, reply) => { try { const preview = previewImport(request.body, options.config.adultKeywordsExtra); return { ...applyImport(options.db, preview), invalid: preview.errors.length, errors: preview.errors }; } catch { return reply.code(422).send({ error: 'api_site must be an object', code: 'INVALID_IMPORT' }); } });
+  app.post('/import/apply', async (request, reply) => { try {
+    const body = request.body as { document?: unknown; duplicateApiPolicy?: unknown };
+    const wrapped = body && typeof body === 'object' && Object.hasOwn(body, 'document');
+    const policy = (wrapped ? body.duplicateApiPolicy : 'skip') as DuplicateApiPolicy;
+    if (!['skip', 'overwrite'].includes(policy)) return reply.code(400).send({ error: 'Invalid duplicate API policy', code: 'INVALID_INPUT' });
+    const preview = previewImport(wrapped ? body.document : request.body, options.config.adultKeywordsExtra);
+    return { ...applyImport(options.db, preview, policy), invalid: preview.errors.length, errors: preview.errors };
+  } catch { return reply.code(422).send({ error: 'api_site must be an object', code: 'INVALID_IMPORT' }); } });
   app.get('/settings', async () => getHealthSettings(options.db));
   app.put('/settings', async (request, reply) => {
     const body = request.body as Record<string, unknown> | null; const entries = [
